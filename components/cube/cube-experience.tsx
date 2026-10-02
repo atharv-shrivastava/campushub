@@ -16,7 +16,7 @@ type Theme = {
   id: string; name: string; label: string; bg: string; surface: string; primary: string;
   secondary: string; accent: string; accent2: string; ink: string
 }
-type Tab = 'home' | 'resources' | 'requests' | 'cred' | 'profile'
+type Tab = 'home' | 'resources' | 'requests' | 'cred' | 'profile' | 'club' | 'admin'
 type RequestState = 'OPEN' | 'ACCEPTED' | 'DELIVERED' | 'COMPLETED' | 'AUTO_RELEASED' | 'DISPUTED' | 'CANCELLED'
 type Modal = 'upload' | 'request' | 'lost' | null
 type Role = 'STUDENT' | 'CLUB' | 'ADMIN'
@@ -174,6 +174,11 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
 
   const theme = themes.find((item) => item.id === themeId) ?? themes[0]
   const unreadCount = notifications.filter((item) => !item.read).length
+  const roleNav = session.role === 'CLUB'
+    ? [...nav.slice(0, 4), { id: 'club' as Tab, label: 'Club', icon: Users }]
+    : session.role === 'ADMIN'
+      ? [...nav.slice(0, 4), { id: 'admin' as Tab, label: 'Admin', icon: ShieldCheck }]
+      : nav
 
   useEffect(() => {
     const root = document.documentElement
@@ -194,9 +199,9 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
       }
       try {
         const [remoteResources, remoteRequests, remoteWallet] = await Promise.all([
-          cubeApi.resources.list(),
-          cubeApi.requests.list(),
-          cubeApi.wallet(),
+          cubeApi.user(session.id).resources.list(),
+          cubeApi.user(session.id).requests.list(),
+          cubeApi.user(session.id).wallet(),
         ])
         if (remoteResources.length) {
           setResources(remoteResources.map((r) => ({
@@ -259,7 +264,7 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
   const toggleLiked = (id: number) => {
     const nextLiked = liked.includes(id) ? liked.filter((item) => item !== id) : [...liked, id]
     setLiked(nextLiked)
-    if (!liked.includes(id)) void syncBackend(cubeApi.resources.vote(id))
+    if (!liked.includes(id)) void syncBackend(cubeApi.user(session.id).resources.vote(id))
   }
 
   const downloadResource = (resource: any) => {
@@ -275,7 +280,7 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
 
   const acceptRequest = (id: number) => {
     setRequests((prev) => prev.map((request) => request.id === id ? { ...request, state: 'ACCEPTED', helper: 'You' } : request))
-    void syncBackend(cubeApi.requests.accept(id))
+    void syncBackend(cubeApi.user(session.id).requests.accept(id))
     notify('Request accepted', 'Cred remains locked until you submit delivery.')
     setNotice('Accepted · Cred stays locked')
   }
@@ -283,7 +288,7 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
   const submitDelivery = (id: number) => {
     const now = new Date().toISOString()
     setRequests((prev) => prev.map((request) => request.id === id ? { ...request, state: 'DELIVERED', deliveredAt: now, helper: 'You' } : request))
-    void syncBackend(cubeApi.requests.deliver(id))
+    void syncBackend(cubeApi.user(session.id).requests.deliver(id))
     notify('Delivery submitted', 'The requester now has 48 hours to accept or dispute.')
     setNotice('Delivered · 48h auto-release started')
   }
@@ -309,7 +314,7 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
 
   const disputeRequest = (id: number) => {
     setRequests((prev) => prev.map((request) => request.id === id ? { ...request, state: 'DISPUTED' } : request))
-    void syncBackend(cubeApi.requests.dispute(id))
+    void syncBackend(cubeApi.user(session.id).requests.dispute(id))
     notify('Dispute opened', 'Automatic release is paused while an admin reviews the request.')
     setNotice('Dispute opened · release paused')
   }
@@ -319,7 +324,7 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
     if (!request || request.state !== 'OPEN' || !request.createdByMe) return
     setRequests((prev) => prev.map((item) => item.id === id ? { ...item, state: 'CANCELLED' } : item))
     setSpendable((value) => value + request.bounty)
-    void syncBackend(cubeApi.requests.cancel(id))
+    void syncBackend(cubeApi.user(session.id).requests.cancel(id))
     notify('Request cancelled', `${request.bounty} Cred returned to your wallet.`)
     setNotice('Request cancelled · Cred refunded')
   }
@@ -390,7 +395,8 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
     setResources((prev) => [next, ...prev])
     setMonthly((value) => value + 10)
     setSpendable((value) => value + 10)
-    void syncBackend(cubeApi.resources.create({
+    if (session.role === 'STUDENT') onPdfUploaded()
+    void syncBackend(cubeApi.user(session.id).resources.create({
       title, subject, tag, teacher, setName: 'A', fileHash: hash, fileName: file.name,
     }))
     notify('Resource uploaded', '+10 Monthly Cred and +10 Spendable Cred.')
@@ -421,7 +427,7 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
     }
     setSpendable((value) => value - bounty)
     setRequests((prev) => [next, ...prev])
-    void syncBackend(cubeApi.requests.create({ title, detail, bounty }))
+    void syncBackend(cubeApi.user(session.id).requests.create({ title, detail, bounty }))
     notify('Request posted', `${bounty} Cred is temporarily locked.`)
     setModal(null)
     setNotice(`${bounty} Cred locked · request is live`)
@@ -483,13 +489,15 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
             {tab === 'resources' && <ResourcesView loading={loading} query={query} setQuery={setQuery} resources={filteredResources} saved={saved} liked={liked} toggleSaved={toggleSaved} toggleLiked={toggleLiked} downloadResource={downloadResource} setModal={setModal}/>}
             {tab === 'requests' && <RequestsView requests={requests} onAccept={acceptRequest} onDeliver={submitDelivery} onComplete={settleRequest} onDispute={disputeRequest} onCancel={cancelRequest} setModal={setModal}/>}
             {tab === 'cred' && <CredView spendable={spendable} monthly={monthly} conduct={conduct} redeem={redeem}/>}
-            {tab === 'profile' && <ProfileView spendable={spendable} monthly={monthly} conduct={conduct} resourcesCount={resources.length} requestCount={requests.length} theme={theme} onTheme={() => setShowThemes(true)}/>}
+            {tab === 'profile' && <ProfileView spendable={spendable} monthly={monthly} conduct={conduct} resourcesCount={resources.length} requestCount={requests.length} theme={theme} onTheme={() => setShowThemes(true)} onLogout={onLogout} pdfUploads={pdfUploads}/>}
+            {tab === 'club' && <ClubView session={session} events={events} onLogout={onLogout} setNotice={setNotice} />}
+            {tab === 'admin' && <AdminView setNotice={setNotice} onLogout={onLogout} />}
           </motion.div>
         </AnimatePresence>
       </main>
 
       <nav className="cube-bottom-nav" aria-label="Primary">
-        {nav.map((item) => { const Icon = item.icon; return <button key={item.id} className={cn('cube-nav-item', tab === item.id && 'is-active')} onClick={() => setTab(item.id)} aria-current={tab === item.id ? 'page' : undefined}><span className="cube-nav-icon"><Icon size={19}/></span><span>{item.label}</span></button> })}
+        {roleNav.map((item) => { const Icon = item.icon; return <button key={item.id} className={cn('cube-nav-item', tab === item.id && 'is-active')} onClick={() => setTab(item.id)} aria-current={tab === item.id ? 'page' : undefined}><span className="cube-nav-icon"><Icon size={19}/></span><span>{item.label}</span></button> })}
       </nav>
 
       <AnimatePresence>
@@ -541,8 +549,8 @@ function CredView({spendable,monthly,conduct,redeem}:{spendable:number;monthly:n
   return <div className="cube-page"><PageIntro eyebrow="Virtual economy" title="Cred, but make it tangible." subtitle="One balance to spend. One score to contribute. One conduct signal to protect."/><div className="cube-wallet-card"><div className="cube-wallet-orbit"/><div className="cube-wallet-top"><span>CampusHub</span><span>Spendable Cred</span></div><div className="cube-wallet-balance">{spendable}<small>C</small></div><div className="cube-wallet-bottom"><span>Monthly {monthly}</span><span>Conduct {conduct>0?'+':''}{conduct}</span><span>•••• 2048</span></div></div><div className="cube-cred-three"><div><span>Monthly</span><strong>{monthly}</strong><small>resets each month</small></div><div><span>Spendable</span><strong>{spendable}</strong><small>never resets</small></div><div><span>Conduct</span><strong>{conduct>0?'+':''}{conduct}</strong><small>long-term behavior</small></div></div><SectionHeading eyebrow="Cred Store" title="Spend it on useful things."/><div className="cube-reward-grid">{rewards.map((reward)=>{const Icon=reward.icon;return <motion.article key={reward.name} className={`cube-reward-card cube-3d-card-interactive ${reward.color}`} style={{transformStyle:'preserve-3d'}} whileHover={{y:-4,rotateX:-2,rotateY:2,z:8}} whileTap={{scale:.975,rotateX:1,z:-4}}><span className="cube-reward-icon"><Icon size={19}/></span><strong>{reward.name}</strong><p>{reward.desc}</p><footer><span>{reward.cost} Cred</span><button onClick={()=>redeem(reward.cost,reward.name)}>Redeem</button></footer></motion.article>})}</div><div className="cube-transaction-card"><div className="cube-transaction-heading"><span className="cube-kicker">Recent movement</span><span>Auditable ledger</span></div>{[['+15','Request completion','Today'],['+10','Resource upload','Yesterday'],['−20','Escrow lock','Yesterday'],['+10','Resource upload','Mon']].map(([amount,label,date])=><div className="cube-transaction" key={label+date}><span className={amount.startsWith('+')?'positive':'negative'}>{amount}</span><div><strong>{label}</strong><small>{date}</small></div><ChevronRight size={15}/></div>)}</div></div>
 }
 
-function ProfileView({theme,spendable,monthly,conduct,resourcesCount,requestCount,onTheme}:{theme:Theme;spendable:number;monthly:number;conduct:number;resourcesCount:number;requestCount:number;onTheme:()=>void}) {
-  return <div className="cube-page"><PageIntro eyebrow="You" title="Make your corner of campus yours." subtitle="Academic identity, contribution history and the little settings that keep everything tidy."/><div className="cube-profile-hero"><div className="cube-avatar"><span>AS</span><i/></div><div><h2>Atharv</h2><p>CSE · 2nd Year · Semester 3 · Set A</p><span className="cube-profile-tag">RGPV · LNCT</span></div><button className="cube-icon-button" onClick={onTheme} aria-label="Visual settings"><Settings2 size={18}/></button></div><div className="cube-profile-grid"><div className="cube-profile-stat"><BookOpen size={18}/><strong>{resourcesCount}</strong><span>resources</span></div><div className="cube-profile-stat"><Users size={18}/><strong>{requestCount}</strong><span>request activity</span></div><div className="cube-profile-stat"><WalletCards size={18}/><strong>{spendable}</strong><span>spendable Cred</span></div><div className="cube-profile-stat"><Trophy size={18}/><strong>{monthly}</strong><span>monthly Cred</span></div></div><div className="cube-large-card cube-profile-theme-card"><span className="cube-kicker">Current visual style</span><h3>{theme.name}</h3><p>Five visual themes share the same interaction language, so CUBE can change personality without breaking usability.</p><button className="cube-primary-cta" onClick={onTheme}>Open Visual Lab <Sparkles size={15}/></button></div></div>
+function ProfileView({theme,spendable,monthly,conduct,resourcesCount,requestCount,onTheme,onLogout,pdfUploads}:{theme:Theme;spendable:number;monthly:number;conduct:number;resourcesCount:number;requestCount:number;onTheme:()=>void;onLogout:()=>void;pdfUploads:number}) {
+  return <div className="cube-page"><PageIntro eyebrow="You" title="Make your corner of campus yours." subtitle="Academic identity, contribution history and the little settings that keep everything tidy."/><div className="cube-profile-hero"><div className="cube-avatar"><span>AS</span><i/></div><div><h2>Atharv</h2><p>CSE · 2nd Year · Semester 3 · Set A</p><span className="cube-profile-tag">RGPV · LNCT</span></div><button className="cube-icon-button" onClick={onTheme} aria-label="Visual settings"><Settings2 size={18}/></button></div><div className="cube-profile-grid"><div className="cube-profile-stat"><UploadCloud size={18}/><strong>{Math.min(pdfUploads,2)}/2</strong><span>PDF unlock</span></div><div className="cube-profile-stat"><BookOpen size={18}/><strong>{resourcesCount}</strong><span>resources</span></div><div className="cube-profile-stat"><Users size={18}/><strong>{requestCount}</strong><span>request activity</span></div><div className="cube-profile-stat"><WalletCards size={18}/><strong>{spendable}</strong><span>spendable Cred</span></div><div className="cube-profile-stat"><Trophy size={18}/><strong>{monthly}</strong><span>monthly Cred</span></div></div><div className="cube-large-card cube-profile-theme-card"><span className="cube-kicker">Current visual style</span><h3>{theme.name}</h3><p>Five visual themes share the same interaction language, so CUBE can change personality without breaking usability.</p><button className="cube-primary-cta" onClick={onTheme}>Open Visual Lab <Sparkles size={15}/></button></div></div>
 }
 
 function ResourceCard({resource,saved,liked,onSave,onLike,onDownload,index,large=false}:{resource:any;saved:boolean;liked:boolean;onSave:()=>void;onLike:()=>void;onDownload:()=>void;index:number;large?:boolean}) {
