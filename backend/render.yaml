@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: cube-backend
+    runtime: docker
+    rootDir: backend
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    envVars:
+      - key: CUBE_FRONTEND_ORIGIN
+        value: https://campushub.vercel.app
+      - key: DATABASE_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
