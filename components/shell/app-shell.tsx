@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { ToastProvider } from './toast'
 import { TopNav } from './top-nav'
 import { MobileDock } from './mobile-dock'
@@ -12,7 +13,7 @@ type ShellContextValue = {
   toggleSaved: (id: string) => boolean
 }
 
-const ShellContext = createContext<ShellContextValue>({
+export const ShellContext = createContext<ShellContextValue>({
   openSearch: () => {},
   saved: new Set(),
   toggleSaved: () => false,
@@ -21,8 +22,12 @@ const ShellContext = createContext<ShellContextValue>({
 export const useShell = () => useContext(ShellContext)
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+  const immersive = pathname === '/'
   const [searchOpen, setSearchOpen] = useState(false)
-  const [saved, setSaved] = useState<Set<string>>(() => new Set(['oop-notes-complete', 'dbms-normalisation']))
+  const [saved, setSaved] = useState<Set<string>>(
+    () => new Set(['oop-notes-complete', 'dbms-normalisation']),
+  )
 
   const toggleSaved = useCallback(
     (id: string) => {
@@ -52,10 +57,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <ShellContext.Provider value={{ openSearch: () => setSearchOpen(true), saved, toggleSaved }}>
       <ToastProvider>
-        <TopNav />
-        <main className="mx-auto w-full max-w-6xl px-4 pb-32 pt-24 md:px-6 md:pb-20 md:pt-28">{children}</main>
-        <MobileDock />
-        <CommandSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
+        {immersive ? (
+          <main className="cube-route-root">{children}</main>
+        ) : (
+          <>
+            <TopNav />
+            <main className="mx-auto w-full max-w-6xl px-4 pb-32 pt-24 md:px-6 md:pb-20 md:pt-28">
+              {children}
+            </main>
+            <MobileDock />
+            <CommandSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
+          </>
+        )}
       </ToastProvider>
     </ShellContext.Provider>
   )
