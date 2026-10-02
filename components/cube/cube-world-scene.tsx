@@ -34,18 +34,50 @@ function makeProgram(gl:WebGLRenderingContext){
   const p=gl.createProgram()!;gl.attachShader(p,vs);gl.attachShader(p,fs);gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p)||'shader link failed');gl.deleteShader(vs);gl.deleteShader(fs);return p
 }
 
-export function CubeWorldScene({accent,accent2,primary,onChapterChange}:Props){
+export function CubeWorldScene({accent,accent2,primary,onChapterChange,onObjectActivate}:Props){
   const host=useRef<HTMLDivElement>(null)
-  const drag=useRef({down:false,sx:0,sy:0,rx:0,ry:0})
+  const drag=useRef({down:false,sx:0,sy:0,rx:0,ry:0,vx:0,vy:0,moved:false,lastX:0,lastY:0})
+  const hitTargets=useRef<Array<{chapter:Chapter;x:number;y:number;radius:number}>>([])
   const chapterRef=useRef<Chapter>('resources')
   const activateRef=useRef(onObjectActivate)
   const [failed,setFailed]=useState(false)
 
   useEffect(()=>{activateRef.current=onObjectActivate},[onObjectActivate])
 
-  const pointerDown=(e:ReactPointerEvent<HTMLDivElement>)=>{drag.current.down=true;drag.current.sx=e.clientX;drag.current.sy=e.clientY;host.current?.setPointerCapture(e.pointerId)}
-  const pointerMove=(e:ReactPointerEvent<HTMLDivElement>)=>{if(!drag.current.down)return;drag.current.ry+=(e.clientX-drag.current.sx)*.004;drag.current.rx+=(e.clientY-drag.current.sy)*.003;drag.current.sx=e.clientX;drag.current.sy=e.clientY}
-  const pointerUp=(e:ReactPointerEvent<HTMLDivElement>)=>{drag.current.down=false;host.current?.releasePointerCapture(e.pointerId)}
+  const pointerDown=(e:ReactPointerEvent<HTMLDivElement>)=>{
+    drag.current.down=true
+    drag.current.sx=e.clientX
+    drag.current.sy=e.clientY
+    drag.current.lastX=e.clientX
+    drag.current.lastY=e.clientY
+    drag.current.vx=0
+    drag.current.vy=0
+    drag.current.moved=false
+    host.current?.setPointerCapture(e.pointerId)
+  }
+  const pointerMove=(e:ReactPointerEvent<HTMLDivElement>)=>{
+    if(!drag.current.down)return
+    const dx=e.clientX-drag.current.lastX
+    const dy=e.clientY-drag.current.lastY
+    if(Math.abs(e.clientX-drag.current.sx)+Math.abs(e.clientY-drag.current.sy)>7)drag.current.moved=true
+    drag.current.ry+=dx*.005
+    drag.current.rx=Math.max(-.55,Math.min(.55,drag.current.rx+dy*.0035))
+    drag.current.vy=dx*.005
+    drag.current.vx=dy*.0035
+    drag.current.lastX=e.clientX
+    drag.current.lastY=e.clientY
+  }
+  const pointerUp=(e:ReactPointerEvent<HTMLDivElement>)=>{
+    const wasTap=!drag.current.moved
+    drag.current.down=false
+    host.current?.releasePointerCapture(e.pointerId)
+    if(wasTap){
+      const hit=hitTargets.current
+        .map((target)=>({...target,distance:Math.hypot(e.clientX-target.x,e.clientY-target.y)}))
+        .sort((a,b)=>a.distance-b.distance)[0]
+      if(hit&&hit.distance<=hit.radius)activateRef.current?.(hit.chapter)
+    }
+  }
 
   useEffect(()=>{
     const hostEl=host.current
