@@ -19,6 +19,9 @@ public class ClubEventController {
         return service.registerClub(userId,body.name);
     }
 
+    @GetMapping("/clubs/me")
+    public Club myClub(@RequestHeader("X-User-Id") String userId){return service.myClub(userId);}
+
     @GetMapping("/clubs/pending")
     public List<Club> pendingClubs(){return service.pendingClubs();}
 
