@@ -3,7 +3,8 @@
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
 
-type Props = { accent:string; accent2:string; primary:string }
+type Chapter = 'resources' | 'requests' | 'events' | 'cred'
+type Props = { accent:string; accent2:string; primary:string; onChapterChange?:(chapter:Chapter)=>void }
 type Vec3=[number,number,number]
 
 const I=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]
@@ -33,9 +34,10 @@ function makeProgram(gl:WebGLRenderingContext){
   const p=gl.createProgram()!;gl.attachShader(p,vs);gl.attachShader(p,fs);gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p)||'shader link failed');gl.deleteShader(vs);gl.deleteShader(fs);return p
 }
 
-export function CubeWorldScene({accent,accent2,primary}:Props){
+export function CubeWorldScene({accent,accent2,primary,onChapterChange}:Props){
   const host=useRef<HTMLDivElement>(null)
   const drag=useRef({down:false,sx:0,sy:0,rx:0,ry:0})
+  const chapterRef=useRef<Chapter>('resources')
   const [failed,setFailed]=useState(false)
 
   const pointerDown=(e:ReactPointerEvent<HTMLDivElement>)=>{drag.current.down=true;drag.current.sx=e.clientX;drag.current.sy=e.clientY;host.current?.setPointerCapture(e.pointerId)}
@@ -116,6 +118,12 @@ export function CubeWorldScene({accent,accent2,primary}:Props){
 
         const elapsed=(time-start)/1000
         const progress=Math.max(0,Math.min(1,(window.innerHeight*.74-rect.top)/(window.innerHeight+rect.height)))
+        const chapterIndex=Math.min(3,Math.floor(progress*4))
+        const chapter=(['resources','requests','events','cred'] as Chapter[])[chapterIndex]
+        if(chapter!==chapterRef.current){chapterRef.current=chapter;onChapterChange?.(chapter)}
+        const chapterCenters=[0.125,0.375,0.625,0.875]
+        const focus=(i:number)=>Math.max(0,1-Math.min(1,Math.abs(progress-chapterCenters[i])/.17))
+        const fResources=focus(0),fRequests=focus(1),fEvents=focus(2),fCred=focus(3)
         const autoSpin=reduced?0:elapsed*.08+progress*.75
         const view=look([Math.sin(autoSpin+drag.current.ry)*8,3.05-Math.min(.65,progress*.65),Math.cos(autoSpin+drag.current.ry)*8],[0,0,0],[0,1,0])
         const projection=persp(.66,w/h,.1,45)
@@ -126,16 +134,21 @@ export function CubeWorldScene({accent,accent2,primary}:Props){
           let model=t(x,y,z);model=mul(model,ry(rot));model=mul(model,rx(tilt));model=mul(model,s(sx,sy,sz));drawIndexed(cubeBuf,cubeIdx,36,model,projection,view,color,alpha)
         }
 
-        box(-3.15,-.2,0,1.05,1.35,.82,0,0,cp,.88)
-        box(-1.35,-.45,-.55,.82,.88,.7,.2,0,cb,.64)
-        box(1.5,-.24,-.35,1.04,1.12,.82,-.12,0,cp,.74)
-        box(3.0,-.5,.15,.76,.76,.66,.25,0,cb,.58)
-
         const float=reduced?0:Math.sin(elapsed*1.15)*.16
-        box(0,float,.6,1.08,1.08,1.08,.38,Math.sin(elapsed*.55)*.11,ca,1)
+        const focusBox=(baseX:number,baseY:number,baseZ:number,baseS:[number,number,number],rot:number,tilt:number,color:number[],active:number,alpha:number)=>{
+          const z=baseZ+active*1.15
+          const scale=1+active*.42
+          box(baseX*(1-active*.72),baseY+active*.35,z,baseS[0]*scale,baseS[1]*scale,baseS[2]*scale,rot,tilt,color,Math.min(1,alpha+.2*active))
+        }
+        focusBox(-3.15,-.2,0,[1.05,1.35,.82],0,0,cp,fResources,.72)
+        focusBox(3.0,-.5,.15,[.76,.76,.66],.25,0,cb,fRequests,.62)
+        focusBox(1.5,-.24,-.35,[1.04,1.12,.82],-.12,0,cp,fEvents,.64)
+        focusBox(2.55,.05,-1.52,[.52,1.0,.52],elapsed*.55,0,ca,fCred,.52)
+
+        const centerPulse=Math.max(fResources,fRequests,fEvents,fCred)
+        box(0,float,.6+centerPulse*.2,1.08+centerPulse*.16,1.08+centerPulse*.16,1.08+centerPulse*.16,.38,Math.sin(elapsed*.55)*.11,ca,1)
         box(-3.35,1.22+float,1.2,.78,.09,1.05,-.34,.18,ca,.92)
         box(3.12,1.35+Math.sin(elapsed*1.35)*.16,.7,.6,.12,.6,elapsed*.45,.2,cb,.92)
-        box(2.55,.05,-1.52,.52,1.0,.52,elapsed*.55,0,cp,.7)
 
         drawLine(ringBuf,ringSteps,mul(t(0,.25,0),mul(ry(elapsed*.15),rx(.42))),projection,view,cb,.62)
         drawParticles(particleBuf,particleCount,projection,view)
@@ -155,7 +168,7 @@ export function CubeWorldScene({accent,accent2,primary}:Props){
       return()=>{}
     }catch(error){console.error('CUBE native WebGL scene failed',error);if(!stopped)setFailed(true)}
     return()=>{stopped=true;cancelAnimationFrame(raf);ro?.disconnect()}
-  },[accent,accent2,primary])
+  },[accent,accent2,primary,onChapterChange])
 
   return <div ref={host} className="cube-world-scene" onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp}>
     {failed&&<div className="cube-world-fallback"><span>Campus in motion</span><strong>Resources · Requests · Events · Cred</strong></div>}
