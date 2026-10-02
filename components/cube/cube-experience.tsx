@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { CubeScene } from './cube-scene'
+import { cubeApi } from '@/lib/cube-api'
 
 type Theme = {
   id: string; name: string; label: string; bg: string; surface: string; primary: string;
@@ -140,9 +141,41 @@ export function CubeExperience() {
   }, [theme])
 
   useEffect(() => {
-    const id = window.setTimeout(() => setLoading(false), 700)
-    return () => window.clearTimeout(id)
-  }, [])
+    const hydrateFromApi = async () => {
+      if (!cubeApi.enabled()) {
+        setLoading(false)
+        return
+      }
+      try {
+        const [remoteResources, remoteRequests, remoteWallet] = await Promise.all([
+          cubeApi.resources.list(),
+          cubeApi.requests.list(),
+          cubeApi.wallet(),
+        ])
+        if (remoteResources.length) {
+          setResources(remoteResources.map((r) => ({
+            id: r.id, title: r.title, subject: r.subject, tag: r.tag, meta: r.fileName,
+            votes: r.votes, tone: 'lavender', teacher: r.teacher || 'Optional', set: r.setName, hash: r.id.toString(),
+          })))
+        }
+        if (remoteRequests.length) {
+          setRequests(remoteRequests.map((r) => ({
+            id: r.id, title: r.title, detail: r.detail, bounty: r.bounty, state: r.state as RequestState,
+            helper: r.helperExternalId === 'demo-atharv' ? 'You' : (r.helperExternalId || ''),
+            createdByMe: r.requesterExternalId === 'demo-atharv', deliveredAt: r.deliveredAt || '',
+          })))
+        }
+        setSpendable(remoteWallet.spendable)
+        setMonthly(remoteWallet.monthly)
+      } catch (error) {
+        console.error('CUBE API hydration failed', error)
+        setNotice('Backend unavailable · using local demo state')
+      } finally {
+        setLoading(false)
+      }
+    }
+    void hydrateFromApi()
+  }, [setResources, setRequests, setSpendable, setMonthly])
 
   useEffect(() => {
     if (!notice) return
@@ -156,6 +189,17 @@ export function CubeExperience() {
     return resources.filter((item) => [item.title, item.subject, item.tag, item.teacher].some((value) => value.toLowerCase().includes(q)))
   }, [query, resources])
 
+  const syncBackend = async (operation: Promise<unknown>, successMessage?: string) => {
+    if (!cubeApi.enabled()) return
+    try {
+      await operation
+      if (successMessage) setNotice(successMessage)
+    } catch (error) {
+      console.error('CUBE API operation failed', error)
+      setNotice('Saved locally · backend sync failed')
+    }
+  }
+
   const notify = (title: string, text: string) => {
     setNotifications((prev) => [{ id: Date.now(), title, text, read: false }, ...prev].slice(0, 16))
   }
@@ -167,7 +211,9 @@ export function CubeExperience() {
   }
 
   const toggleLiked = (id: number) => {
-    setLiked((prev) => prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id])
+    const nextLiked = liked.includes(id) ? liked.filter((item) => item !== id) : [...liked, id]
+    setLiked(nextLiked)
+    if (!liked.includes(id)) void syncBackend(cubeApi.resources.vote(id))
   }
 
   const downloadResource = (resource: any) => {
@@ -183,6 +229,7 @@ export function CubeExperience() {
 
   const acceptRequest = (id: number) => {
     setRequests((prev) => prev.map((request) => request.id === id ? { ...request, state: 'ACCEPTED', helper: 'You' } : request))
+    void syncBackend(cubeApi.requests.accept(id))
     notify('Request accepted', 'Cred remains locked until you submit delivery.')
     setNotice('Accepted · Cred stays locked')
   }
@@ -190,6 +237,7 @@ export function CubeExperience() {
   const submitDelivery = (id: number) => {
     const now = new Date().toISOString()
     setRequests((prev) => prev.map((request) => request.id === id ? { ...request, state: 'DELIVERED', deliveredAt: now, helper: 'You' } : request))
+    void syncBackend(cubeApi.requests.deliver(id))
     notify('Delivery submitted', 'The requester now has 48 hours to accept or dispute.')
     setNotice('Delivered · 48h auto-release started')
   }
@@ -215,6 +263,7 @@ export function CubeExperience() {
 
   const disputeRequest = (id: number) => {
     setRequests((prev) => prev.map((request) => request.id === id ? { ...request, state: 'DISPUTED' } : request))
+    void syncBackend(cubeApi.requests.dispute(id))
     notify('Dispute opened', 'Automatic release is paused while an admin reviews the request.')
     setNotice('Dispute opened · release paused')
   }
@@ -224,6 +273,7 @@ export function CubeExperience() {
     if (!request || request.state !== 'OPEN' || !request.createdByMe) return
     setRequests((prev) => prev.map((item) => item.id === id ? { ...item, state: 'CANCELLED' } : item))
     setSpendable((value) => value + request.bounty)
+    void syncBackend(cubeApi.requests.cancel(id))
     notify('Request cancelled', `${request.bounty} Cred returned to your wallet.`)
     setNotice('Request cancelled · Cred refunded')
   }
@@ -294,6 +344,9 @@ export function CubeExperience() {
     setResources((prev) => [next, ...prev])
     setMonthly((value) => value + 10)
     setSpendable((value) => value + 10)
+    void syncBackend(cubeApi.resources.create({
+      title, subject, tag, teacher, setName: 'A', fileHash: hash, fileName: file.name,
+    }))
     notify('Resource uploaded', '+10 Monthly Cred and +10 Spendable Cred.')
     setModal(null)
     setNotice('+10 Monthly · +10 Spendable')
@@ -322,6 +375,7 @@ export function CubeExperience() {
     }
     setSpendable((value) => value - bounty)
     setRequests((prev) => [next, ...prev])
+    void syncBackend(cubeApi.requests.create({ title, detail, bounty }))
     notify('Request posted', `${bounty} Cred is temporarily locked.`)
     setModal(null)
     setNotice(`${bounty} Cred locked · request is live`)
