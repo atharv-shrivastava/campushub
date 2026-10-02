@@ -21,6 +21,13 @@ public class DataSeeder {
                 return users.save(u);
             });
 
+            users.findByExternalId("true-admin").orElseGet(() -> {
+                User admin = new User("true-admin", "CUBE Admin");
+                admin.setRole(User.Role.ADMIN);
+                admin.addConduct(100);
+                return users.save(admin);
+            });
+
             if (resources.count() == 0) {
                 resources.save(new Resource("OOP in Java — complete notes", "Object Oriented Programming", "Notes",
                         "Dr. Mehta", "A", "seed-oop", "oop-notes.pdf", demo.getExternalId()));
