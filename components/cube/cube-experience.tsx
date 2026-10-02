@@ -179,6 +179,7 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
   const [selectedFeature, setSelectedFeature] = useState<string | null>(null)
   const [modal, setModal] = useState<Modal>(null)
   const [loading, setLoading] = useState(true)
+  const [backendStatus, setBackendStatus] = useState<'checking'|'online'|'offline'>('checking')
 
   const theme = themes.find((item) => item.id === themeId) ?? themes[0]
   const unreadCount = notifications.filter((item) => !item.read).length
@@ -211,6 +212,7 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
   useEffect(() => {
     const hydrateFromApi = async () => {
       if (!cubeApi.enabled()) {
+        setBackendStatus('offline')
         setLoading(false)
         return
       }
@@ -238,6 +240,7 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
         setSpendable(remoteWallet.spendable)
         setMonthly(remoteWallet.monthly)
         setPdfUploads(remoteWallet.validPdfUploads)
+        setBackendStatus('online')
         if (remoteEvents.length) {
           setEvents(remoteEvents.map((event) => ({
             id: event.id, title: event.title, kind: event.kind,
@@ -247,6 +250,7 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
         }
       } catch (error) {
         console.error('CUBE API hydration failed', error)
+        setBackendStatus('offline')
         setNotice('Backend unavailable · using local demo state')
       } finally {
         setLoading(false)
@@ -530,7 +534,7 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
               opacity: { duration: .34, ease: 'easeOut' },
             }}
           >
-            {tab === 'home' && <HomeView loading={loading} theme={theme} spendable={spendable} monthly={monthly} query={query} setQuery={setQuery} resources={filteredResources.slice(0,3)} requests={requests} acceptRequest={acceptRequest} redeem={redeem} saved={saved} liked={liked} toggleSaved={toggleSaved} toggleLiked={toggleLiked} downloadResource={downloadResource} onOpenFeature={setSelectedFeature} onSeeResources={() => changeTab('resources')} onJump={changeTab} events={events} registerEvent={registerEvent} lostItems={lostItems} resolveLostItem={resolveLostItem} setModal={setModal} offers={offers} setNotice={setNotice}/>}
+            {tab === 'home' && <HomeView loading={loading} backendStatus={backendStatus} theme={theme} spendable={spendable} monthly={monthly} query={query} setQuery={setQuery} resources={filteredResources.slice(0,3)} requests={requests} acceptRequest={acceptRequest} redeem={redeem} saved={saved} liked={liked} toggleSaved={toggleSaved} toggleLiked={toggleLiked} downloadResource={downloadResource} onOpenFeature={setSelectedFeature} onSeeResources={() => changeTab('resources')} onJump={changeTab} events={events} registerEvent={registerEvent} lostItems={lostItems} resolveLostItem={resolveLostItem} setModal={setModal} offers={offers} setNotice={setNotice}/>}
             {tab === 'resources' && <ResourcesView loading={loading} query={query} setQuery={setQuery} resources={filteredResources} saved={saved} liked={liked} toggleSaved={toggleSaved} toggleLiked={toggleLiked} downloadResource={downloadResource} setModal={setModal}/>}
             {tab === 'requests' && <RequestsView requests={requests} onAccept={acceptRequest} onDeliver={submitDelivery} onComplete={settleRequest} onDispute={disputeRequest} onCancel={cancelRequest} setModal={setModal}/>}
             {tab === 'cred' && <CredView spendable={spendable} monthly={monthly} conduct={conduct} redeem={redeem}/>}
@@ -558,7 +562,7 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
 }
 
 function SpatialCampus(props:any) {
-  const {onJump,theme,resources,requests,events,spendable,monthly,saved,liked,toggleSaved,toggleLiked,downloadResource,acceptRequest,registerEvent,redeem,setModal}=props
+  const {onJump,theme,backendStatus,resources,requests,events,spendable,monthly,saved,liked,toggleSaved,toggleLiked,downloadResource,acceptRequest,registerEvent,redeem,setModal}=props
   const sectionRef=useRef<HTMLElement>(null)
   const [chapter,setChapter]=useState<'resources'|'requests'|'events'|'cred'>('resources')
   const worlds=[
@@ -621,14 +625,16 @@ function SpatialCampus(props:any) {
       <div className="cube-live-panel" key={chapter}>
         <div className="cube-live-panel-head">
           <div><span className="cube-kicker">LIVE FEATURE</span><strong>{current.label}</strong></div>
-          <span className="cube-live-state"><i/> Interactive</span>
+          <span className={`cube-live-state ${backendStatus==='online'?'is-online':backendStatus==='offline'?'is-offline':'is-checking'}`}><i/>{backendStatus==='online'?'Backend live':backendStatus==='checking'?'Checking backend':'Demo data · offline'}</span>
         </div>
 
         {chapter==='resources' && <div className="cube-live-content">
+          <div className="cube-live-metrics"><span><strong>{resources.length}</strong><small>resources</small></span><span><strong>{requests.length}</strong><small>requests</small></span><span><strong>{events.length}</strong><small>events</small></span><span><strong>{spendable}</strong><small>Cred</small></span></div>
           {liveResource ? <>
             <span className="cube-live-index">RESOURCE 01</span>
             <strong>{liveResource.title}</strong>
             <small>{liveResource.subject} · {liveResource.tag} · {liveResource.votes} likes</small>
+            <div className="cube-live-resource-meta"><span>{liveResource.teacher}</span><span>Set {liveResource.set}</span><span>{liveResource.meta}</span></div>
             <div className="cube-live-actions">
               <button onClick={()=>toggleLiked(liveResource.id)}>{liked.includes(liveResource.id)?'Liked':'Like'}</button>
               <button onClick={()=>toggleSaved(liveResource.id)}>{saved.includes(liveResource.id)?'Saved':'Save'}</button>
@@ -680,13 +686,14 @@ function SpatialCampus(props:any) {
   </section>
 }
 function HomeView(props: any) {
-  const { loading, theme, spendable, monthly, query, setQuery, resources, requests, saved, liked, toggleSaved, toggleLiked, downloadResource, acceptRequest, redeem, onOpenFeature, onSeeResources, onJump, events, registerEvent, lostItems, resolveLostItem, setModal, offers, setNotice } = props
+  const { loading, backendStatus, theme, spendable, monthly, query, setQuery, resources, requests, saved, liked, toggleSaved, toggleLiked, downloadResource, acceptRequest, redeem, onOpenFeature, onSeeResources, onJump, events, registerEvent, lostItems, resolveLostItem, setModal, offers, setNotice } = props
   return <div className="cube-page">
     <section className="cube-hero"><div className="cube-hero-copy"><motion.span className="cube-live-pill" animate={{y:[0,-2,0]}} transition={{duration:3,repeat:Infinity,ease:'easeInOut'}}><span className="cube-live-dot"/> Friday · Week 7</motion.span><h1>Your campus,<br/><em>beautifully alive.</em></h1><p>Resources, people, requests, events and little campus moments, all in one place.</p><div className="cube-search-wrap"><Search size={19}/><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Search notes, requests, events..." aria-label="Search CampusHub"/><kbd>⌘ K</kbd></div><div className="cube-quick-row"><button onClick={()=>onJump('resources')}><BookOpen size={16}/> Study</button><button onClick={()=>onJump('requests')}><Zap size={16}/> Help someone</button><button onClick={()=>onJump('cred')}><Gift size={16}/> Spend Cred</button></div></div><motion.div className="cube-hero-orb" initial={{opacity:0,scale:.9,rotate:-4}} animate={{opacity:1,scale:1,rotate:0}} transition={{duration:.8}}><CubeScene accent={theme.primary} accent2={theme.accent2} intensity={1.05}/><div className="cube-hero-orb-caption"><span>03</span><small>things worth opening</small></div></motion.div></section>
 
     <SpatialCampus
       onJump={onJump}
       theme={theme}
+      backendStatus={backendStatus}
       resources={resources}
       requests={requests}
       events={events}
