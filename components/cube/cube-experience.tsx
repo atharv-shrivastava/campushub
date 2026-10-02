@@ -157,6 +157,7 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
 }) {
   const [themeId, setThemeId] = useLocalState('cube-theme', 'emerald')
   const [tab, setTab] = useState<Tab>('home')
+  const [tabDirection, setTabDirection] = useState(1)
   const [query, setQuery] = useState('')
   const [saved, setSaved] = useLocalState<number[]>('cube-saved', [1, 2])
   const [liked, setLiked] = useLocalState<number[]>('cube-liked', [])
@@ -186,6 +187,15 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
     : session.role === 'ADMIN'
       ? [...nav.slice(0, 4), { id: 'admin' as Tab, label: 'Admin', icon: ShieldCheck }]
       : nav
+
+  const changeTab = (next: Tab) => {
+    if (next === tab) return
+    const currentIndex = roleNav.findIndex((item) => item.id === tab)
+    const nextIndex = roleNav.findIndex((item) => item.id === next)
+    setTabDirection(nextIndex >= currentIndex ? 1 : -1)
+    setTab(next)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   useEffect(() => {
     const root = document.documentElement
@@ -470,7 +480,7 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
       <div className="cube-atmosphere" />
 
       <header className="cube-topbar">
-        <button className="cube-brand" onClick={() => setTab('home')} aria-label="CampusHub home">
+        <button className="cube-brand" onClick={() => changeTab('home')} aria-label="CampusHub home">
           <span className="cube-logo">C</span>
           <span><strong>CampusHub</strong><small>your campus, but alive.</small></span>
         </button>
@@ -500,9 +510,27 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
       </AnimatePresence>
 
       <main className="cube-content">
-        <AnimatePresence mode="wait">
-          <motion.div key={tab} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: .34, ease: [0.22,1,.36,1] }}>
-            {tab === 'home' && <HomeView loading={loading} theme={theme} spendable={spendable} monthly={monthly} query={query} setQuery={setQuery} resources={filteredResources.slice(0,3)} saved={saved} liked={liked} toggleSaved={toggleSaved} toggleLiked={toggleLiked} downloadResource={downloadResource} onOpenFeature={setSelectedFeature} onSeeResources={() => setTab('resources')} onJump={setTab} events={events} registerEvent={registerEvent} lostItems={lostItems} resolveLostItem={resolveLostItem} setModal={setModal} offers={offers} setNotice={setNotice}/>}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={tab}
+            className="cube-page-turn"
+            initial={{ opacity: 0, rotateY: tabDirection * 82, x: tabDirection * 26, scale: .985 }}
+            animate={{ opacity: 1, rotateY: 0, x: 0, scale: 1 }}
+            exit={{ opacity: 0, rotateY: tabDirection * -88, x: tabDirection * -18, scale: .985 }}
+            style={{
+              transformPerspective: 1600,
+              transformStyle: 'preserve-3d',
+              transformOrigin: tabDirection > 0 ? 'right center' : 'left center',
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden',
+            }}
+            transition={{
+              duration: .72,
+              ease: [0.22, 1, 0.36, 1],
+              opacity: { duration: .34, ease: 'easeOut' },
+            }}
+          >
+            {tab === 'home' && <HomeView loading={loading} theme={theme} spendable={spendable} monthly={monthly} query={query} setQuery={setQuery} resources={filteredResources.slice(0,3)} saved={saved} liked={liked} toggleSaved={toggleSaved} toggleLiked={toggleLiked} downloadResource={downloadResource} onOpenFeature={setSelectedFeature} onSeeResources={() => changeTab('resources')} onJump={changeTab} events={events} registerEvent={registerEvent} lostItems={lostItems} resolveLostItem={resolveLostItem} setModal={setModal} offers={offers} setNotice={setNotice}/>}
             {tab === 'resources' && <ResourcesView loading={loading} query={query} setQuery={setQuery} resources={filteredResources} saved={saved} liked={liked} toggleSaved={toggleSaved} toggleLiked={toggleLiked} downloadResource={downloadResource} setModal={setModal}/>}
             {tab === 'requests' && <RequestsView requests={requests} onAccept={acceptRequest} onDeliver={submitDelivery} onComplete={settleRequest} onDispute={disputeRequest} onCancel={cancelRequest} setModal={setModal}/>}
             {tab === 'cred' && <CredView spendable={spendable} monthly={monthly} conduct={conduct} redeem={redeem}/>}
@@ -514,7 +542,7 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
       </main>
 
       <nav className="cube-bottom-nav" aria-label="Primary">
-        {roleNav.map((item) => { const Icon = item.icon; return <button key={item.id} className={cn('cube-nav-item', tab === item.id && 'is-active')} onClick={() => setTab(item.id)} aria-current={tab === item.id ? 'page' : undefined}><span className="cube-nav-icon"><Icon size={19}/></span><span>{item.label}</span></button> })}
+        {roleNav.map((item) => { const Icon = item.icon; return <button key={item.id} className={cn('cube-nav-item', tab === item.id && 'is-active')} onClick={() => changeTab(item.id)} aria-current={tab === item.id ? 'page' : undefined}><span className="cube-nav-icon"><Icon size={19}/></span><span>{item.label}</span></button> })}
       </nav>
 
       <AnimatePresence>
