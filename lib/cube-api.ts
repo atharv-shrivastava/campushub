@@ -33,6 +33,23 @@ export const cubeApi = {
     resources: {
       list: (q='') => request<ApiResource[]>(userId, `/api/v1/resources${q ? `?q=${encodeURIComponent(q)}` : ''}`),
       create: (body: {title:string;subject:string;tag:string;teacher?:string;setName:string;fileHash:string;fileName:string}) => request<ApiResource>(userId,'/api/v1/resources',{method:'POST',body:JSON.stringify(body)}),
+      uploadPdf: async (file:File, meta:{title:string;subject:string;tag?:string;teacher?:string;setName?:string}) => {
+        const form = new FormData()
+        form.append('file', file)
+        form.append('title', meta.title)
+        form.append('subject', meta.subject)
+        form.append('tag', meta.tag || 'Notes')
+        if (meta.teacher) form.append('teacher', meta.teacher)
+        form.append('setName', meta.setName || 'A')
+        const response = await fetch(`${API_URL}/api/v1/resources/upload`, {
+          method: 'POST',
+          headers: { 'X-User-Id': userId },
+          body: form,
+          cache: 'no-store',
+        })
+        if (!response.ok) throw new Error((await response.text()) || `Upload failed with ${response.status}`)
+        return response.json() as Promise<ApiResource>
+      },
       vote: (id:number) => request<{votes:number}>(userId,`/api/v1/resources/${id}/vote`,{method:'POST'}),
     },
     requests: {
