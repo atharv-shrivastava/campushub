@@ -1,257 +1,177 @@
 'use client'
 
+import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
-import type * as THREE from 'three'
 
-type CubeWorldSceneProps = { accent:string; accent2:string; primary:string }
+type Props = { accent:string; accent2:string; primary:string }
 
-export function CubeWorldScene({ accent, accent2, primary }: CubeWorldSceneProps) {
-  const hostRef = useRef<HTMLDivElement>(null)
-  const [failed, setFailed] = useState(false)
+type Vec3=[number,number,number]
 
-  useEffect(() => {
-    let disposed = false
-    let cleanup = () => {}
+const mat4Identity=():number[]=>[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]
+const mat4Multiply=(a:number[],b:number[])=>{const o=new Array(16).fill(0);for(let r=0;r<4;r++)for(let c=0;c<4;c++)for(let k=0;k<4;k++)o[c+r*4]+=a[k+r*4]*b[c+k*4];return o}
+const translate=(x:number,y:number,z:number)=>[1,0,0,0,0,1,0,0,0,0,1,0,x,y,z,1]
+const scale=(x:number,y:number,z:number)=>[x,0,0,0,0,y,0,0,0,0,z,0,0,0,0,1]
+const rotX=(a:number)=>{const c=Math.cos(a),s=Math.sin(a);return[1,0,0,0,0,c,s,0,0,-s,c,0,0,0,0,1]}
+const rotY=(a:number)=>{const c=Math.cos(a),s=Math.sin(a);return[c,0,-s,0,0,1,0,0,s,0,c,0,0,0,0,1]}
+const rotZ=(a:number)=>{const c=Math.cos(a),s=Math.sin(a);return[c,s,0,0,-s,c,0,0,0,0,1,0,0,0,0,1]}
+const perspective=(fovy:number,aspect:number,near:number,far:number)=>{const f=1/Math.tan(fovy/2),nf=1/(near-far);return[f/aspect,0,0,0,0,f,0,0,0,0,(far+near)*nf,-1,0,0,(2*far*near)*nf,0]}
+const normalize=(v:Vec3)=>{const l=Math.hypot(v[0],v[1],v[2])||1;return[v[0]/l,v[1]/l,v[2]/l] as Vec3}
+const cross=(a:Vec3,b:Vec3):Vec3=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]]
+const sub=(a:Vec3,b:Vec3):Vec3=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]]
+const dot=(a:Vec3,b:Vec3)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2]
+const lookAt=(eye:Vec3,target:Vec3,up:Vec3)=>{const z=normalize(sub(eye,target)),x=normalize(cross(up,z)),y=cross(z,x);return[x[0],y[0],z[0],0,x[1],y[1],z[1],0,x[2],y[2],z[2],0,-dot(x,eye),-dot(y,eye),-dot(z,eye),1]}
 
-    const boot = async () => {
-      if (!hostRef.current || !('WebGLRenderingContext' in window)) {
-        setFailed(true)
-        return
+const cubeVertices=new Float32Array([
+ -1,-1,-1, 1,-1,-1, 1,1,-1, -1,1,-1,
+ -1,-1,1, 1,-1,1, 1,1,1, -1,1,1,
+])
+const cubeIndices=new Uint16Array([
+ 0,1,2,0,2,3, 4,6,5,4,7,6, 0,4,5,0,5,1,
+ 3,2,6,3,6,7, 0,3,7,0,7,4, 1,5,6,1,6,2,
+])
+const floorVertices=new Float32Array([-8,-1.5,-6,8,-1.5,-6,8,-1.5,6,-8,-1.5,6])
+const floorIndices=new Uint16Array([0,1,2,0,2,3])
+
+function hexToRgb(hex:string){const h=hex.replace('#','');return[parseInt(h.slice(0,2),16)/255,parseInt(h.slice(2,4),16)/255,parseInt(h.slice(4,6),16)/255]}
+function program(gl:WebGLRenderingContext,vsSource:string,fsSource:string){const compile=(type:number,src:string)=>{const s=gl.createShader(type)!;gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s)||'shader error');return s};const vs=compile(gl.VERTEX_SHADER,vsSource),fs=compile(gl.FRAGMENT_SHADER,fsSource),p=gl.createProgram()!;gl.attachShader(p,vs);gl.attachShader(p,fs);gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p)||'program error');gl.deleteShader(vs);gl.deleteShader(fs);return p}
+
+export function CubeWorldScene({accent,accent2,primary}:Props){
+  const host=useRef<HTMLDivElement>(null)
+  const [failed,setFailed]=useState(false)
+  const drag=useRef({x:0,y:0,down:false,sx:0,sy:0,rx:0,ry:0})
+  const onPointerDown=(e:ReactPointerEvent<HTMLDivElement>)=>{drag.current={...drag.current,down:true,sx:e.clientX,sy:e.clientY}}
+  const onPointerMove=(e:ReactPointerEvent<HTMLDivElement>)=>{if(!drag.current.down)return;drag.current.ry+=(e.clientX-drag.current.sx)*.004;drag.current.rx+=(e.clientY-drag.current.sy)*.003;drag.current.sx=e.clientX;drag.current.sy=e.clientY}
+  const onPointerUp=()=>{drag.current.down=false}
+
+  useEffect(()=>{
+    const hostEl=host.current
+    if(!hostEl) return
+    let disposed=false
+    let raf=0
+    let resizeObs:ResizeObserver|undefined
+    try{
+      const canvas=document.createElement('canvas')
+      canvas.setAttribute('aria-hidden','true')
+      hostEl.prepend(canvas)
+      const gl=canvas.getContext('webgl',{antialias:true,alpha:true,powerPreference:'high-performance'})
+      if(!gl) throw new Error('WebGL unavailable')
+
+      const vs=`
+        attribute vec3 aPosition;
+        uniform mat4 uProjection,uView,uModel;
+        void main(){gl_Position=uProjection*uView*uModel*vec4(aPosition,1.0);}
+      `
+      const fs=`
+        precision mediump float;
+        uniform vec3 uColor;
+        uniform float uAlpha;
+        void main(){gl_FragColor=vec4(uColor,uAlpha);}
+      `
+      const prog=program(gl,vs,fs)
+      gl.useProgram(prog)
+      const posLoc=gl.getAttribLocation(prog,'aPosition')
+      const projectionLoc=gl.getUniformLocation(prog,'uProjection')
+      const viewLoc=gl.getUniformLocation(prog,'uView')
+      const modelLoc=gl.getUniformLocation(prog,'uModel')
+      const colorLoc=gl.getUniformLocation(prog,'uColor')
+      const alphaLoc=gl.getUniformLocation(prog,'uAlpha')
+
+      const cubeBuf=gl.createBuffer()!,cubeIndex=gl.createBuffer()!,floorBuf=gl.createBuffer()!,floorIndex=gl.createBuffer()!
+      gl.bindBuffer(gl.ARRAY_BUFFER,cubeBuf);gl.bufferData(gl.ARRAY_BUFFER,cubeVertices,gl.STATIC_DRAW)
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,cubeIndex);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,cubeIndices,gl.STATIC_DRAW)
+      gl.bindBuffer(gl.ARRAY_BUFFER,floorBuf);gl.bufferData(gl.ARRAY_BUFFER,floorVertices,gl.STATIC_DRAW)
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,floorIndex);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,floorIndices,gl.STATIC_DRAW)
+
+      const rgbA=hexToRgb(accent),rgbB=hexToRgb(accent2),rgbP=hexToRgb(primary)
+      const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      const start=performance.now()
+
+      const drawMesh=(vertexBuffer:WebGLBuffer,indexBuffer:WebGLBuffer,count:number,model:number[],color:number[],alpha=1,mode=gl.TRIANGLES)=>{
+        gl.bindBuffer(gl.ARRAY_BUFFER,vertexBuffer)
+        gl.enableVertexAttribArray(posLoc)
+        gl.vertexAttribPointer(posLoc,3,gl.FLOAT,false,0,0)
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,indexBuffer)
+        gl.uniformMatrix4fv(projectionLoc,false,new Float32Array(projection))
+        gl.uniformMatrix4fv(viewLoc,false,new Float32Array(view))
+        gl.uniformMatrix4fv(modelLoc,false,new Float32Array(model))
+        gl.uniform3fv(colorLoc,new Float32Array(color))
+        gl.uniform1f(alphaLoc,alpha)
+        gl.drawElements(mode,count,gl.UNSIGNED_SHORT,0)
       }
 
-      try {
-        const THREE = await import('three')
-        if (disposed || !hostRef.current) return
+      const render=(time:number)=>{
+        if(disposed) return
+        const t=(time-start)/1000
+        const rect=hostEl.getBoundingClientRect()
+        const dpr=Math.min(window.devicePixelRatio||1,1.25)
+        const w=Math.max(1,Math.floor(rect.width*dpr)),h=Math.max(1,Math.floor(rect.height*dpr))
+        if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;gl.viewport(0,0,w,h)}
+        gl.enable(gl.DEPTH_TEST)
+        gl.enable(gl.BLEND)
+        gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA)
+        gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT)
 
-        const host = hostRef.current
-        const width = host.clientWidth
-        const height = host.clientHeight
+        const progress=Math.max(0,Math.min(1,(window.innerHeight*.75-rect.top)/(window.innerHeight+rect.height)))
+        const autoY=reduced?0:(t*.1+progress*.9)
+        const pointerY=reduced?0:drag.current.ry
+        const pointerX=reduced?0:drag.current.rx
+        const projection=perspective(.64,w/h,.1,40)
+        const eye:[number,number,number]=[Math.sin(autoY+pointerY)*8,3.2-Math.min(.7,progress*.7)+Math.sin(t*.32)*.08,Math.cos(autoY+pointerY)*8]
+        const target:[number,number,number]=[0,0,0]
+        const view=lookAt(eye,target,[0,1,0])
 
-        const scene = new THREE.Scene()
-        scene.fog = new THREE.FogExp2(new THREE.Color('#f4efe3'), 0.035)
+        drawMesh(floorBuf,floorIndex,6,mat4Identity(),[...rgbB].map(v=>v*.42),.28)
 
-        const camera = new THREE.PerspectiveCamera(34, width / height, 0.1, 80)
-        camera.position.set(0, 3.4, 11)
-
-        const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true, powerPreference:'high-performance' })
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.35))
-        renderer.setSize(width, height, false)
-        renderer.outputColorSpace = THREE.SRGBColorSpace
-        renderer.shadowMap.enabled = false
-        host.appendChild(renderer.domElement)
-
-        const ambient = new THREE.HemisphereLight('#fffdf5', '#b7c9c0', 2.2)
-        const key = new THREE.DirectionalLight(new THREE.Color('#ffffff'), 3.5)
-        key.position.set(4, 8, 7)
-        scene.add(ambient, key)
-
-        const root = new THREE.Group()
-        root.rotation.x = -0.14
-        scene.add(root)
-
-        const floor = new THREE.Mesh(
-          new THREE.CircleGeometry(8, 48),
-          new THREE.MeshStandardMaterial({ color:'#e7eee8', roughness:.92, metalness:.02 }),
-        )
-        floor.rotation.x = -Math.PI / 2
-        floor.position.y = -1.45
-        root.add(floor)
-
-        const grid = new THREE.GridHelper(14, 18, new THREE.Color(primary), new THREE.Color('#ffffff'))
-        grid.position.y = -1.43
-        grid.material.transparent = true
-        grid.material.opacity = .12
-        root.add(grid)
-
-        const buildingMat = new THREE.MeshStandardMaterial({ color:new THREE.Color(primary), roughness:.72, metalness:.08 })
-        const creamMat = new THREE.MeshStandardMaterial({ color:'#fff7df', roughness:.8, metalness:.02 })
-        const accentMat = new THREE.MeshStandardMaterial({ color:new THREE.Color(accent), roughness:.5, metalness:.1 })
-        const accent2Mat = new THREE.MeshStandardMaterial({ color:new THREE.Color(accent2), roughness:.45, metalness:.08 })
-
-        const campus = new THREE.Group()
-        root.add(campus)
-
-        const towerData = [
-          [-3.2,-0.35,-.15,1.4,2.5],
-          [-1.4,-0.45,-.55,1.15,1.65],
-          [1.5,-0.4,-.35,1.4,2.05],
-          [3.1,-0.5,.05,1.1,1.45],
-        ]
-
-        towerData.forEach(([x,y,z,w,h],i) => {
-          const mesh = new THREE.Mesh(new THREE.BoxGeometry(w,h,w*.76), i % 2 ? creamMat : buildingMat)
-          mesh.position.set(x as number,(y as number)+(h as number)/2,z as number)
-          campus.add(mesh)
-
-          const windowGeo = new THREE.PlaneGeometry(w*.56,.16)
-          for(let row=0;row<3;row++){
-            const window = new THREE.Mesh(windowGeo, i%2 ? accent2Mat : accentMat)
-            window.position.set(x as number,(y as number)+.45+row*.47,(z as number)-(w as number)*.385)
-            window.rotation.y = 0
-            campus.add(window)
-          }
-        })
-
-        const plaza = new THREE.Mesh(
-          new THREE.CylinderGeometry(1.7,1.9,.22,32),
-          creamMat,
-        )
-        plaza.position.set(0,-1.23,.35)
-        campus.add(plaza)
-
-        const cube = new THREE.Mesh(
-          new THREE.BoxGeometry(1.7,1.7,1.7),
-          new THREE.MeshPhysicalMaterial({
-            color:new THREE.Color(accent),
-            roughness:.23,
-            metalness:.13,
-            clearcoat:.75,
-            clearcoatRoughness:.18,
-            transmission:.04,
-          }),
-        )
-        cube.position.set(0,.12,.45)
-        cube.rotation.set(.24,.42,-.1)
-        root.add(cube)
-
-        const ring = new THREE.Mesh(
-          new THREE.TorusGeometry(2.25,.035,8,96),
-          new THREE.MeshBasicMaterial({ color:new THREE.Color(accent2), transparent:true, opacity:.7 }),
-        )
-        ring.rotation.x = Math.PI/2.35
-        ring.position.y = .25
-        root.add(ring)
-
-        const coin = new THREE.Mesh(
-          new THREE.CylinderGeometry(.52,.52,.13,40),
-          new THREE.MeshStandardMaterial({ color:new THREE.Color(accent2), roughness:.34, metalness:.55 }),
-        )
-        coin.rotation.x = Math.PI/2
-        coin.position.set(3.25,1.35,.65)
-        root.add(coin)
-
-        const book = new THREE.Group()
-        const bookBody = new THREE.Mesh(new THREE.BoxGeometry(1.05,.14,1.36), creamMat)
-        const bookCover = new THREE.Mesh(new THREE.BoxGeometry(1.12,.035,1.43), accentMat)
-        book.add(bookBody,bookCover)
-        book.position.set(-3.4,1.15,1.1)
-        book.rotation.set(.2,-.35,-.14)
-        root.add(book)
-
-        const beacon = new THREE.Mesh(
-          new THREE.ConeGeometry(.56,1.05,8),
-          new THREE.MeshStandardMaterial({ color:new THREE.Color(primary), roughness:.36, metalness:.18 }),
-        )
-        beacon.position.set(2.8,1.0,-1.45)
-        root.add(beacon)
-
-        const particleGeo = new THREE.BufferGeometry()
-        const count = 65
-        const positions = new Float32Array(count*3)
-        for(let i=0;i<count;i++){
-          positions[i*3] = (Math.random()-.5)*14
-          positions[i*3+1] = Math.random()*6-1
-          positions[i*3+2] = (Math.random()-.5)*7
-        }
-        particleGeo.setAttribute('position',new THREE.BufferAttribute(positions,3))
-        const particles = new THREE.Points(
-          particleGeo,
-          new THREE.PointsMaterial({ color:new THREE.Color(accent2), size:.035, transparent:true, opacity:.42, depthWrite:false }),
-        )
-        scene.add(particles)
-
-        const pointer = { x:0, y:0, tx:0, ty:0 }
-        const onPointer = (event:PointerEvent) => {
-          const rect = host.getBoundingClientRect()
-          pointer.tx = ((event.clientX-rect.left)/rect.width-.5)*1.2
-          pointer.ty = ((event.clientY-rect.top)/rect.height-.5)*1.0
-        }
-        const resetPointer = () => { pointer.tx=0; pointer.ty=0 }
-        const onTouch = (event:TouchEvent) => {
-          if(!event.touches[0]) return
-          const rect=host.getBoundingClientRect()
-          pointer.tx=((event.touches[0].clientX-rect.left)/rect.width-.5)*1.0
-          pointer.ty=((event.touches[0].clientY-rect.top)/rect.height-.8)*.8
+        const drawBox=(x:number,y:number,z:number,sx:number,sy:number,sz:number,ry:number,rx:number,color:number[],alpha=1)=>{
+          let m=translate(x,y,z)
+          m=mat4Multiply(m,rotY(ry));m=mat4Multiply(m,rotX(rx));m=mat4Multiply(m,scale(sx,sy,sz))
+          drawMesh(cubeBuf,cubeIndex,36,m,color,alpha)
         }
 
-        const onScroll = () => {
-          const rect = host.getBoundingClientRect()
-          const progress = THREE.MathUtils.clamp((window.innerHeight*.72-rect.top)/(window.innerHeight+rect.height),0,1)
-          root.rotation.y = progress*.62-.28
-          camera.position.y = 3.4 - progress*.7
-          camera.position.z = 11 - progress*1.7
-        }
+        drawBox(-3.1,-.1,0,1.05,1.35,.82,0,0,rgbP,.92)
+        drawBox(-1.3,-.45,-.55,.82,.88,.72,.18,0,rgbB,.72)
+        drawBox(1.45,-.22,-.35,1.05,1.12,.82,-.14,0,rgbP,.8)
+        drawBox(3.05,-.48,.1,.78,.76,.68,.28,0,rgbB,.62)
 
-        host.addEventListener('pointermove',onPointer)
-        host.addEventListener('pointerleave',resetPointer)
-        host.addEventListener('touchmove',onTouch,{passive:true})
-        window.addEventListener('scroll',onScroll,{passive:true})
-        onScroll()
+        const float= reduced?0:Math.sin(t*1.1)*.18
+        drawBox(0,float,.55,1.05,1.05,1.05,.35,Math.sin(t*.55)*.12,rgbA,1)
+        drawBox(-3.25,1.25+float*.7,1.25,.75,.09,1.02,-.35,.18,rgbA,.86)
+        drawBox(3.15,1.35+Math.sin(t*1.35)*.16,.72,.62,.12,.62,Math.sin(t*.6),.2,rgbB,.9)
+        drawBox(2.55,.1,-1.55,.55,1.0,.55,Math.sin(t*.8),0,rgbP,.74)
 
-        let frame = 0
-        const started = performance.now()
-        const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        const ringColor=rgbB
+        gl.bindBuffer(gl.ARRAY_BUFFER,cubeBuf)
+        const ringSteps=64
+        const ringData=new Float32Array(ringSteps*3)
+        for(let i=0;i<ringSteps;i++){const a=i/ringSteps*Math.PI*2;ringData[i*3]=Math.cos(a)*2.65;ringData[i*3+1]=-.05;ringData[i*3+2]=Math.sin(a)*2.65}
+        gl.bufferData(gl.ARRAY_BUFFER,ringData,gl.DYNAMIC_DRAW)
+        gl.enableVertexAttribArray(posLoc);gl.vertexAttribPointer(posLoc,3,gl.FLOAT,false,0,0)
+        gl.uniformMatrix4fv(projectionLoc,false,new Float32Array(projection))
+        gl.uniformMatrix4fv(viewLoc,false,new Float32Array(view))
+        let rm=mat4Multiply(rotY(t*.18),rotX(.5))
+        gl.uniformMatrix4fv(modelLoc,false,new Float32Array(rm))
+        gl.uniform3fv(colorLoc,new Float32Array(ringColor))
+        gl.uniform1f(alphaLoc,.66)
+        gl.drawArrays(gl.LINE_LOOP,0,ringSteps)
 
-        const animate = (time:number) => {
-          if(disposed) return
-          const elapsed = (time-started)/1000
-          if(!reduced){
-            pointer.x += (pointer.tx-pointer.x)*.055
-            pointer.y += (pointer.ty-pointer.y)*.055
-            cube.rotation.y += .0035
-            cube.rotation.x += Math.sin(elapsed*.65)*.0007
-            ring.rotation.z += .003
-            coin.rotation.z -= .009
-            coin.position.y = 1.35 + Math.sin(elapsed*1.3)*.18
-            book.rotation.y += .0024
-            book.position.y = 1.15 + Math.cos(elapsed*1.1)*.08
-            beacon.position.y = 1.0 + Math.sin(elapsed*1.6)*.13
-            campus.rotation.y += .0008
-            particles.rotation.y += .00025
-          }
-          root.rotation.x += ((reduced ? -.14 : -.14 + pointer.y*.08)-root.rotation.x)*.035
-          root.rotation.y += (root.rotation.y + pointer.x*.13 - root.rotation.y)*.035
-          renderer.render(scene,camera)
-          frame=requestAnimationFrame(animate)
-        }
-        frame=requestAnimationFrame(animate)
-
-        const resize = () => {
-          const w=host.clientWidth,h=host.clientHeight
-          if(!w||!h) return
-          camera.aspect=w/h
-          camera.updateProjectionMatrix()
-          renderer.setSize(w,h,false)
-        }
-        const ro = new ResizeObserver(resize)
-        ro.observe(host)
-
-        cleanup = () => {
-          cancelAnimationFrame(frame)
-          ro.disconnect()
-          host.removeEventListener('pointermove',onPointer)
-          host.removeEventListener('pointerleave',resetPointer)
-          host.removeEventListener('touchmove',onTouch)
-          window.removeEventListener('scroll',onScroll)
-          particleGeo.dispose()
-          renderer.dispose()
-          scene.traverse((object) => {
-            const mesh = object as THREE.Mesh
-            if(mesh.geometry) mesh.geometry.dispose()
-            if(Array.isArray(mesh.material)) mesh.material.forEach((m)=>m.dispose())
-            else if(mesh.material) mesh.material.dispose()
-          })
-          if(renderer.domElement.parentElement===host) host.removeChild(renderer.domElement)
-        }
-      } catch (error) {
-        console.error('CUBE WebGL scene failed',error)
-        if(!disposed) setFailed(true)
+        gl.deleteBuffer(null as unknown as WebGLBuffer)
+        raf=requestAnimationFrame(render)
       }
-    }
 
-    void boot()
-    return () => { disposed=true; cleanup() }
+      const onResize=()=>{const rect=hostEl.getBoundingClientRect();if(rect.width&&rect.height){canvas.style.width='100%';canvas.style.height='100%'}}
+      resizeObs=new ResizeObserver(onResize);resizeObs.observe(hostEl)
+      onResize()
+      raf=requestAnimationFrame(render)
+
+      return()=>{}
+    }catch(error){console.error('Native WebGL scene failed',error);setFailed(true)}
+    return()=>{disposed=true;cancelAnimationFrame(raf);resizeObs?.disconnect()}
   },[accent,accent2,primary])
 
-  return <div ref={hostRef} className="cube-world-scene">{failed && <div className="cube-world-fallback"><span>Campus in motion</span><strong>Resources · Requests · Events · Cred</strong></div>}<div className="cube-world-label cube-world-label-a"><span>01</span>RESOURCES</div><div className="cube-world-label cube-world-label-b"><span>02</span>REQUESTS</div><div className="cube-world-label cube-world-label-c"><span>03</span>EVENTS</div></div>
+  return <div ref={host} className="cube-world-scene" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
+    {failed&&<div className="cube-world-fallback"><span>Campus in motion</span><strong>Resources · Requests · Events · Cred</strong></div>}
+    <div className="cube-world-label cube-world-label-a"><span>01</span>RESOURCES</div>
+    <div className="cube-world-label cube-world-label-b"><span>02</span>REQUESTS</div>
+    <div className="cube-world-label cube-world-label-c"><span>03</span>EVENTS</div>
+  </div>
 }
