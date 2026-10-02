@@ -1,6 +1,7 @@
 'use client'
 
 import { motion, useMotionValue, useSpring } from 'motion/react'
+import type { PointerEvent } from 'react'
 import { useRef } from 'react'
 
 type CubeSceneProps = { accent: string; accent2: string; intensity?: number }
@@ -9,7 +10,7 @@ export function CubeScene({ accent, accent2 }: CubeSceneProps) {
   const host = useRef<HTMLDivElement>(null)
   const rx = useSpring(useMotionValue(0), { stiffness: 140, damping: 18 })
   const ry = useSpring(useMotionValue(0), { stiffness: 140, damping: 18 })
-  const move = (event: React.PointerEvent<HTMLDivElement>) => {
+  const move = (event: PointerEvent<HTMLDivElement>) => {
     const rect = host.current?.getBoundingClientRect()
     if (!rect) return
     const x = (event.clientX - rect.left) / rect.width - 0.5
