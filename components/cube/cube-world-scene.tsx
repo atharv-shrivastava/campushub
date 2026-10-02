@@ -144,6 +144,8 @@ export function CubeWorldScene({accent,accent2,primary,onChapterChange,onObjectA
       const render=(time:number)=>{
         if(stopped)return
         const rect=hostEl.getBoundingClientRect()
+        const sectionEl=hostEl.closest('.cube-gallery-showcase') as HTMLElement | null
+        const sectionRect=sectionEl?.getBoundingClientRect()
         const dpr=Math.min(window.devicePixelRatio||1,1.25)
         const w=Math.max(1,Math.floor(rect.width*dpr)),h=Math.max(1,Math.floor(rect.height*dpr))
         if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;gl.viewport(0,0,w,h)}
@@ -152,7 +154,10 @@ export function CubeWorldScene({accent,accent2,primary,onChapterChange,onObjectA
         gl.enable(gl.CULL_FACE);gl.cullFace(gl.BACK)
 
         const elapsed=(time-start)/1000
-        const progress=Math.max(0,Math.min(1,(window.innerHeight*.74-rect.top)/(window.innerHeight+rect.height)))
+        const sectionHeight=sectionEl?.offsetHeight ?? rect.height
+        const sectionTop=sectionRect?.top ?? rect.top
+        const travel=Math.max(1,sectionHeight-window.innerHeight)
+        const progress=Math.max(0,Math.min(1,(-sectionTop)/travel))
         const chapterIndex=Math.min(3,Math.floor(progress*4))
         const chapter=(['resources','requests','events','cred'] as Chapter[])[chapterIndex]
         if(chapter!==chapterRef.current){chapterRef.current=chapter;onChapterChange?.(chapter)}
