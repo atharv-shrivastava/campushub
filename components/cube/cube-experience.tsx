@@ -199,10 +199,12 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
         return
       }
       try {
-        const [remoteResources, remoteRequests, remoteWallet] = await Promise.all([
-          cubeApi.user(session.id).resources.list(),
-          cubeApi.user(session.id).requests.list(),
-          cubeApi.user(session.id).wallet(),
+        const apiClient = cubeApi.user(session.id)
+        const [remoteResources, remoteRequests, remoteWallet, remoteEvents] = await Promise.all([
+          apiClient.resources.list(),
+          apiClient.requests.list(),
+          apiClient.wallet(),
+          apiClient.events.list(),
         ])
         if (remoteResources.length) {
           setResources(remoteResources.map((r) => ({
@@ -219,6 +221,14 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
         }
         setSpendable(remoteWallet.spendable)
         setMonthly(remoteWallet.monthly)
+        setPdfUploads(remoteWallet.validPdfUploads)
+        if (remoteEvents.length) {
+          setEvents(remoteEvents.map((event) => ({
+            id: event.id, title: event.title, kind: event.kind,
+            date: new Date(event.startsAt).toLocaleDateString('en-IN', { day:'2-digit', month:'short' }),
+            place: event.venue, color: 'mint', registered: false,
+          })))
+        }
       } catch (error) {
         console.error('CUBE API hydration failed', error)
         setNotice('Backend unavailable · using local demo state')
