@@ -120,6 +120,8 @@ export function CubeWorldScene({accent,accent2,primary,onChapterChange,onObjectA
       const ca=rgb(accent),cb=rgb(accent2),cp=rgb(primary)
       const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches
       const start=performance.now()
+      let projection:number[]=I
+      let view:number[]=I
 
       const drawIndexed=(buffer:WebGLBuffer,indexBuffer:WebGLBuffer,count:number,model:number[],projection:number[],view:number[],color:number[],alpha:number)=>{
         gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.enableVertexAttribArray(pos);gl.vertexAttribPointer(pos,3,gl.FLOAT,false,0,0)
@@ -181,8 +183,8 @@ export function CubeWorldScene({accent,accent2,primary,onChapterChange,onObjectA
         const autoSpin=reduced||drag.current.down?0:elapsed*.08+progress*.75
         const yaw=autoSpin+drag.current.ry
         const pitch=drag.current.rx
-        const view=look([Math.sin(yaw)*8,3.05-Math.min(.65,progress*.65)+Math.sin(pitch)*2.25,Math.cos(yaw)*8],[0,0,0],[0,1,0])
-        const projection=persp(.66,w/h,.1,45)
+        view=look([Math.sin(yaw)*8,3.05-Math.min(.65,progress*.65)+Math.sin(pitch)*2.25,Math.cos(yaw)*8],[0,0,0],[0,1,0])
+        projection=persp(.66,w/h,.1,45)
         const pv=mul(projection,view)
         const project=(p:Vec3)=>{
           const x=pv[0]*p[0]+pv[4]*p[1]+pv[8]*p[2]+pv[12]
