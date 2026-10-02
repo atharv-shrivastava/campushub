@@ -34,7 +34,7 @@ The root experience includes:
 - Feature explanation sheets
 - Loading-friendly card surfaces
 - Reduced-motion support
-- A lightweight Three.js 3D hero scene
+- A lightweight GPU-friendly CSS 3D hero scene
 
 ## Product logic represented by the UI
 
@@ -60,7 +60,6 @@ The root design currently uses local demo state so the interaction layer can be 
 - Tailwind CSS 4
 - Motion
 - Lucide
-- Three.js
 
 Three.js is loaded dynamically and kept deliberately small for mobile performance.
 
