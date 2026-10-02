@@ -559,7 +559,19 @@ function SpatialCampus({onJump,theme}:{onJump:(tab:Tab)=>void;theme:Theme}) {
       <div className="cube-world-legend"><span className={chapter==='resources'?'is-active':''}><i className="resource-dot"/>Resources</span><span className={chapter==='requests'?'is-active':''}><i className="request-dot"/>Requests</span><span className={chapter==='events'?'is-active':''}><i className="event-dot"/>Events</span><span className={chapter==='cred'?'is-active':''}><i className="cred-dot"/>Cred</span></div>
     </div>
     <div className="cube-world-stage">
-      <CubeWorldScene accent={theme.accent} accent2={theme.accent2} primary={theme.primary} onChapterChange={setChapter}/>
+      <CubeWorldScene
+        accent={theme.accent}
+        accent2={theme.accent2}
+        primary={theme.primary}
+        onChapterChange={setChapter}
+        onObjectActivate={(target)=>{
+          if(target==='events'){
+            document.getElementById('cube-events-section')?.scrollIntoView({behavior:'smooth',block:'start'})
+          }else{
+            onJump(target as Tab)
+          }
+        }}
+      />
       <div className="cube-world-story-card" key={chapter}>
         <span className="cube-kicker">{details.eyebrow}</span>
         <strong>{details.title}</strong>
