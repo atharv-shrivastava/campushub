@@ -35,6 +35,8 @@ public class ClubEventService {
         return events.save(new CampusEvent(title.trim(),kind.trim(),venue.trim(),startsAt,club.getId(),userId));
     }
 
+    public Club myClub(String userId) { return clubs.findByOwnerExternalId(userId).orElse(null); }
+
     public List<CampusEvent> publishedEvents(){ return events.findByStatusOrderByStartsAtAsc("PUBLISHED"); }
     public List<CampusEvent> pendingEvents(){ return events.findByStatusOrderByStartsAtAsc("PENDING"); }
 
