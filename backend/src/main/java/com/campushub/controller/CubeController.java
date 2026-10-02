@@ -3,6 +3,7 @@ package com.campushub.controller;
 import com.campushub.model.*;
 import com.campushub.repository.CampusRequestRepository;
 import com.campushub.service.CubeService;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -34,7 +35,7 @@ public class CubeController {
     @PostMapping("/resources")
     public ResponseEntity<ResourceResponse> createResource(
             @RequestHeader(value = "X-User-Id", defaultValue = "demo-atharv") String userId,
-            @RequestBody CreateResourceRequest body) {
+            @Valid @RequestBody CreateResourceRequest body) {
         Resource saved = service.createResource(userId, body.title, body.subject, body.tag,
                 body.teacher, body.setName, body.fileHash, body.fileName);
         return ResponseEntity.ok(ResourceResponse.from(saved));
@@ -55,7 +56,7 @@ public class CubeController {
     @PostMapping("/requests")
     public ResponseEntity<RequestResponse> createRequest(
             @RequestHeader(value = "X-User-Id", defaultValue = "demo-atharv") String userId,
-            @RequestBody CreateRequest body) {
+            @Valid @RequestBody CreateRequest body) {
         return ResponseEntity.ok(RequestResponse.from(service.createRequest(userId, body.title, body.detail, body.bounty)));
     }
 
