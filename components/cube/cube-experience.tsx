@@ -397,9 +397,9 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
     setMonthly((value) => value + 10)
     setSpendable((value) => value + 10)
     if (session.role === 'STUDENT') onPdfUploaded()
-    void syncBackend(cubeApi.user(session.id).resources.create({
-      title, subject, tag, teacher, setName: 'A', fileHash: hash, fileName: file.name,
-    }))
+    if (cubeApi.enabled()) {
+      void syncBackend(cubeApi.user(session.id).resources.uploadPdf(file,{title,subject,tag,teacher,setName:'A'}))
+    }
     notify('Resource uploaded', '+10 Monthly Cred and +10 Spendable Cred.')
     setModal(null)
     setNotice('+10 Monthly · +10 Spendable')
