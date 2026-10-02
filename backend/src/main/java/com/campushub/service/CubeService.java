@@ -69,6 +69,7 @@ public class CubeService {
         User user = ensureUser(userId);
         user.addMonthly(MONTHLY_UPLOAD_REWARD);
         user.addSpendable(SPENDABLE_UPLOAD_REWARD);
+        user.incrementValidPdfUploads();
         users.save(user);
         transactions.save(new CredTransaction(userId, MONTHLY_UPLOAD_REWARD, SPENDABLE_UPLOAD_REWARD, 0,
                 "RESOURCE_UPLOAD", String.valueOf(resource.getId()), "Valid academic resource contribution"));
@@ -178,6 +179,13 @@ public class CubeService {
     }
 
     public User wallet(String userId) { return ensureUser(userId); }
+
+    @Transactional
+    public User setRole(String userId, User.Role role) {
+        User user = ensureUser(userId);
+        user.setRole(role);
+        return users.save(user);
+    }
 
     public List<CredTransaction> transactions(String userId) {
         ensureUser(userId);
