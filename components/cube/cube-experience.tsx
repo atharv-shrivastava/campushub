@@ -529,20 +529,44 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
   )
 }
 
+function SpatialCampus({onJump,theme}:{onJump:(tab:Tab)=>void;theme:Theme}) {
+  const [chapter,setChapter]=useState<'resources'|'requests'|'events'|'cred'>('resources')
+  const details={
+    resources:{eyebrow:'01 / RESOURCES',title:'Pull your notes into focus.',text:'The resource world comes forward as you scroll. Open the library from the object itself.',button:'Open Resources'},
+    requests:{eyebrow:'02 / REQUESTS',title:'Turn a favor into a task.',text:'The request world takes over next. Bounties, helpers and delivery all live in the real Requests tab.',button:'Open Requests'},
+    events:{eyebrow:'03 / EVENTS',title:'See what is happening next.',text:'The event beacon becomes the focus. Jump straight to the live campus calendar instead of hunting for it.',button:'Open Events'},
+    cred:{eyebrow:'04 / CRED',title:'Your contribution has weight.',text:'The final chapter brings Cred forward. Spend it, earn it, and see the wallet behind the system.',button:'Open Cred'},
+  }[chapter]
+  const chapterTab={resources:'resources',requests:'requests',events:'home',cred:'cred'}[chapter] as Tab
+  return <section className="cube-world-wrap">
+    <div className="cube-world-copy">
+      <span className="cube-kicker">CUBE / SPATIAL CAMPUS</span>
+      <h2>Not another flat dashboard.</h2>
+      <p>Scroll through four functional chapters. The scene changes focus as you move, then hands you directly to the feature you just explored.</p>
+      <div className="cube-world-legend"><span className={chapter==='resources'?'is-active':''}><i className="resource-dot"/>Resources</span><span className={chapter==='requests'?'is-active':''}><i className="request-dot"/>Requests</span><span className={chapter==='events'?'is-active':''}><i className="event-dot"/>Events</span><span className={chapter==='cred'?'is-active':''}><i className="cred-dot"/>Cred</span></div>
+    </div>
+    <div className="cube-world-stage">
+      <CubeWorldScene accent={theme.accent} accent2={theme.accent2} primary={theme.primary} onChapterChange={setChapter}/>
+      <div className="cube-world-story-card" key={chapter}>
+        <span className="cube-kicker">{details.eyebrow}</span>
+        <strong>{details.title}</strong>
+        <small>{details.text}</small>
+        <button onClick={()=>onJump(chapterTab)}>{details.button}<ArrowUpRight size={14}/></button>
+      </div>
+      <div className="cube-world-chapters" aria-label="Spatial campus chapters">
+        {(Object.keys(details ? {resources:1,requests:1,events:1,cred:1}: {}) as Array<'resources'|'requests'|'events'|'cred'>).map((item)=><button key={item} className={item===chapter?'is-active':''} onClick={()=>setChapter(item)} aria-label={item}>{item.slice(0,1).toUpperCase()}</button>)}
+      </div>
+      <div className="cube-world-swipe"><span>Scroll to change · drag to orbit</span><i/></div>
+    </div>
+  </section>
+}
+
 function HomeView(props: any) {
   const { loading, theme, spendable, monthly, query, setQuery, resources, saved, liked, toggleSaved, toggleLiked, downloadResource, onOpenFeature, onSeeResources, onJump, events, registerEvent, lostItems, resolveLostItem, setModal, offers, setNotice } = props
   return <div className="cube-page">
     <section className="cube-hero"><div className="cube-hero-copy"><motion.span className="cube-live-pill" animate={{y:[0,-2,0]}} transition={{duration:3,repeat:Infinity,ease:'easeInOut'}}><span className="cube-live-dot"/> Friday · Week 7</motion.span><h1>Your campus,<br/><em>beautifully alive.</em></h1><p>Resources, people, requests, events and little campus moments, all in one place.</p><div className="cube-search-wrap"><Search size={19}/><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Search notes, requests, events..." aria-label="Search CampusHub"/><kbd>⌘ K</kbd></div><div className="cube-quick-row"><button onClick={()=>onJump('resources')}><BookOpen size={16}/> Study</button><button onClick={()=>onJump('requests')}><Zap size={16}/> Help someone</button><button onClick={()=>onJump('cred')}><Gift size={16}/> Spend Cred</button></div></div><motion.div className="cube-hero-orb" initial={{opacity:0,scale:.9,rotate:-4}} animate={{opacity:1,scale:1,rotate:0}} transition={{duration:.8}}><CubeScene accent={theme.primary} accent2={theme.accent2} intensity={1.05}/><div className="cube-hero-orb-caption"><span>03</span><small>things worth opening</small></div></motion.div></section>
 
-    <section className="cube-world-wrap">
-      <div className="cube-world-copy">
-        <span className="cube-kicker">CUBE / SPATIAL CAMPUS</span>
-        <h2>Not another flat dashboard.</h2>
-        <p>Scroll through a tiny living campus. Resources, requests and events become objects you can see, touch and explore.</p>
-        <div className="cube-world-legend"><span><i className="resource-dot"/>Resources</span><span><i className="request-dot"/>Requests</span><span><i className="event-dot"/>Events</span><span><i className="cred-dot"/>Cred</span></div>
-      </div>
-      <div className="cube-world-stage"><CubeWorldScene accent={theme.accent} accent2={theme.accent2} primary={theme.primary}/><div className="cube-world-swipe"><span>Drag / swipe</span><i/></div></div>
-    </section>
+    <SpatialCampus onJump={onJump} theme={theme} />
 
     <section className="cube-feature-rail">{[['Academic resources',BookOpen,'lavender','Notes, assignments & PYQs'],['Campus requests',Send,'mint','Tasks powered by Cred'],['Events & clubs',Compass,'peach','What is happening next'],['Lost & found',PackageSearch,'yellow','Find what wandered off'],['Local offers',Store,'blue','Student-friendly deals']].map(([title,Icon,tone,desc],index)=>{const I=Icon as typeof BookOpen;return <motion.button key={String(title)} className={`cube-feature-card cube-3d-card-interactive tone-${tone}`} style={{transformStyle:'preserve-3d'}} whileTap={{scale:.965,rotateX:1,z:-4}} whileHover={{y:-5,rotateX:-2,rotateY:index%2?2:-2,z:9}} onClick={()=>onOpenFeature(String(title))}><span className="cube-feature-number">0{index+1}</span><span className="cube-feature-icon"><I size={20}/></span><strong>{String(title)}</strong><small>{String(desc)}</small><span className="cube-feature-arrow"><ArrowUpRight size={16}/></span></motion.button>})}</section>
 
