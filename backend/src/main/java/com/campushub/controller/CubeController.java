@@ -103,6 +103,12 @@ public class CubeController {
         return RequestResponse.from(service.resolveDispute(adminId, id, outcome));
     }
 
+    @PostMapping("/me/role")
+    public WalletResponse setRole(@RequestHeader(value = "X-User-Id", defaultValue = "demo-atharv") String userId,
+                                   @RequestParam User.Role role) {
+        return WalletResponse.from(service.setRole(userId, role));
+    }
+
     @GetMapping("/wallet")
     public WalletResponse wallet(@RequestHeader(value = "X-User-Id", defaultValue = "demo-atharv") String userId) {
         User user = service.wallet(userId);
@@ -141,9 +147,9 @@ public class CubeController {
         }
     }
 
-    public record WalletResponse(String userId, String name, Long monthly, Long spendable, Long conduct) {
+    public record WalletResponse(String userId, String name, Long monthly, Long spendable, Long conduct, User.Role role, Integer validPdfUploads, boolean unlocked) {
         static WalletResponse from(User u) {
-            return new WalletResponse(u.getExternalId(), u.getName(), u.getMonthlyCred(), u.getSpendableCred(), u.getConductCred());
+            return new WalletResponse(u.getExternalId(), u.getName(), u.getMonthlyCred(), u.getSpendableCred(), u.getConductCred(), u.getRole(), u.getValidPdfUploads(), u.getValidPdfUploads() >= 2);
         }
     }
 
