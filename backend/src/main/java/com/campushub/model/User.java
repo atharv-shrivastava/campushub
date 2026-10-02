@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 @Entity
 @Table(name = "cube_users", uniqueConstraints = @UniqueConstraint(name = "uk_user_external_id", columnNames = "external_id"))
 public class User {
+    public enum Role { STUDENT, CLUB, ADMIN }
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
@@ -35,6 +36,13 @@ public class User {
     @Column(name = "conduct_cred", nullable = false)
     private Long conductCred = 0L;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Role role = Role.STUDENT;
+
+    @Column(name = "valid_pdf_uploads", nullable = false)
+    private Integer validPdfUploads = 0;
+
     protected User() {}
 
     public User(String externalId, String name) {
@@ -52,6 +60,10 @@ public class User {
     public Long getMonthlyCred(){ return monthlyCred; }
     public Long getSpendableCred(){ return spendableCred; }
     public Long getConductCred(){ return conductCred; }
+    public Role getRole(){ return role; }
+    public Integer getValidPdfUploads(){ return validPdfUploads; }
+    public void setRole(Role role){ this.role = role; }
+    public void incrementValidPdfUploads(){ this.validPdfUploads++; }
 
     public void addMonthly(long amount){ monthlyCred += amount; }
     public void addSpendable(long amount){ spendableCred += amount; }
