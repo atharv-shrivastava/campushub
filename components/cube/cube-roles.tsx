@@ -105,9 +105,7 @@ export function PdfUnlockScreen({session,count,onCountChange,onLogout}:{session:
     try {
       const fileHash=await hash(file)
       if(hashes.includes(fileHash)) throw new Error('You already selected that exact PDF.')
-      const result=await cubeApi.user(session.id).resources.create({
-        title:title.trim(),subject:subject.trim(),tag:'Notes',teacher:'Optional',setName:'A',fileHash,fileName:file.name,
-      })
+      const result=await cubeApi.user(session.id).resources.uploadPdf(file,{title:title.trim(),subject:subject.trim(),tag:'Notes',teacher:'Optional',setName:'A'})
       setHashes((prev)=>[...prev,fileHash])
       onCountChange(Math.min(2,count+1))
       setTitle('')
