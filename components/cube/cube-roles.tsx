@@ -1,7 +1,7 @@
 'use client'
 
-import type { FormEvent } from 'react'
-import { useState } from 'react'
+import type { FormEvent, ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { ArrowUpRight, Building2, CalendarDays, Check, FileText, LockKeyhole, LogIn, ShieldCheck, Sparkles, UploadCloud, UserRound, Users, X } from 'lucide-react'
 import { cubeApi } from '@/lib/cube-api'
@@ -159,7 +159,7 @@ export function AdminView({setNotice,onLogout}:{setNotice:(v:string)=>void;onLog
   const [events,setEvents]=useState<any[]>([])
   const [loading,setLoading]=useState(true)
   const refresh=async()=>{setLoading(true);try{const api=cubeApi.admin('true-admin');const [c,e]=await Promise.all([api.pendingClubs(),api.pendingEvents()]);setClubs(c);setEvents(e)}catch{setNotice('Admin API unavailable')}finally{setLoading(false)}}
-  useState(()=>{void refresh()})
+  useEffect(()=>{void refresh()},[])
   const moderateClub=async(id:number,approve:boolean)=>{try{await cubeApi.admin('true-admin').moderateClub(id,approve);setNotice(approve?'Club approved':'Club rejected');await refresh()}catch{setNotice('Could not moderate club')}}
   const moderateEvent=async(id:number,approve:boolean)=>{try{await cubeApi.admin('true-admin').moderateEvent(id,approve);setNotice(approve?'Event published':'Event rejected');await refresh()}catch{setNotice('Could not moderate event')}}
   return <div className="cube-page"><div className="cube-page-head"><PageEyebrow label="Admin Control"/><div><h1>Keep the campus healthy.</h1><p>Moderation is human-led. The admin decides what becomes public.</p></div><button className="cube-secondary-cta" onClick={onLogout}>Log out</button></div>
@@ -171,6 +171,6 @@ export function AdminView({setNotice,onLogout}:{setNotice:(v:string)=>void;onLog
 }
 
 function PageEyebrow({label}:{label:string}){return <span className="cube-kicker">{label}</span>}
-function SectionTitle({icon,title}:{icon:React.ReactNode;title:string}){return <div className="cube-admin-title">{icon}<h2>{title}</h2></div>}
+function SectionTitle({icon,title}:{icon:ReactNode;title:string}){return <div className="cube-admin-title">{icon}<h2>{title}</h2></div>}
 function SkeletonRole(){return <div className="cube-role-skeleton"><span/><span/><span/></div>}
 function EmptyRole({text}:{text:string}){return <div className="cube-empty-panel"><Check size={19}/>{text}</div>}
