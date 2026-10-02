@@ -105,11 +105,15 @@ async function sha256(file: File) {
   return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
+const CUBE_BYPASS_LOGIN = true
+const CUBE_DEMO_SESSION: Session = { id: 'demo-atharv', name: 'Atharv', role: 'STUDENT' }
+
 export function CubeExperience() {
-  const [session, setSession] = useState<Session | null>(null)
-  const [pdfUploads, setPdfUploads] = useState(0)
+  const [session, setSession] = useState<Session | null>(CUBE_BYPASS_LOGIN ? CUBE_DEMO_SESSION : null)
+  const [pdfUploads, setPdfUploads] = useState(CUBE_BYPASS_LOGIN ? 2 : 0)
 
   useEffect(() => {
+    if (CUBE_BYPASS_LOGIN) return
     try {
       const raw = window.localStorage.getItem('cube-session')
       if (raw) setSession(JSON.parse(raw) as Session)
@@ -117,7 +121,7 @@ export function CubeExperience() {
   }, [])
 
   useEffect(() => {
-    if (!session) return
+    if (!session || CUBE_BYPASS_LOGIN) return
     void cubeApi.user(session.id).wallet().then((wallet) => setPdfUploads(wallet.validPdfUploads)).catch(() => {})
   }, [session])
 
@@ -131,6 +135,7 @@ export function CubeExperience() {
   }
 
   const logout = () => {
+    if (CUBE_BYPASS_LOGIN) return
     setSession(null)
     setPdfUploads(0)
     window.localStorage.removeItem('cube-session')
