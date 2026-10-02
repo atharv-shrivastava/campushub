@@ -531,61 +531,68 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
 
 function SpatialCampus({onJump,theme}:{onJump:(tab:Tab)=>void;theme:Theme}) {
   const [chapter,setChapter]=useState<'resources'|'requests'|'events'|'cred'>('resources')
-  const details={
-    resources:{eyebrow:'01 / RESOURCES',title:'Pull your notes into focus.',text:'The resource world comes forward as you scroll. Open the library from the object itself.',button:'Open Resources'},
-    requests:{eyebrow:'02 / REQUESTS',title:'Turn a favor into a task.',text:'The request world takes over next. Bounties, helpers and delivery all live in the real Requests tab.',button:'Open Requests'},
-    events:{eyebrow:'03 / EVENTS',title:'See what is happening next.',text:'The event beacon becomes the focus. Jump straight to the live campus calendar instead of hunting for it.',button:'Open Events'},
-    cred:{eyebrow:'04 / CRED',title:'Your contribution has weight.',text:'The final chapter brings Cred forward. Spend it, earn it, and see the wallet behind the system.',button:'Open Cred'},
-  }[chapter]
-  const openChapter=()=>{
-    if(chapter==='events'){
+  const worlds=[
+    {id:'resources' as const,number:'01',label:'STUDY WORLD',title:'Notes become a space.',text:'Flip through your semester library as a visual scene. Tap the world to open Resources.',tab:'resources' as Tab,action:'Open Resources'},
+    {id:'requests' as const,number:'02',label:'HELP WORLD',title:'A favor gets a pathway.',text:'The package follows the handoff path. Tap it to move straight into campus requests.',tab:'requests' as Tab,action:'Open Requests'},
+    {id:'events' as const,number:'03',label:'EVENT WORLD',title:'Campus starts moving.',text:'The beacon pulses when events take focus. Tap it to jump to what is happening this week.',tab:'home' as Tab,action:'See Events'},
+    {id:'cred' as const,number:'04',label:'CRED WORLD',title:'Your contribution has weight.',text:'The virtual wallet turns contribution into something visible. Tap it to open Cred.',tab:'cred' as Tab,action:'Open Cred'},
+  ]
+  const current=worlds.find((world)=>world.id===chapter) ?? worlds[0]
+  const openWorld=(id:'resources'|'requests'|'events'|'cred')=>{
+    if(id==='events'){
       document.getElementById('cube-events-section')?.scrollIntoView({behavior:'smooth',block:'start'})
       return
     }
-    onJump(chapter as Tab)
+    onJump(id as Tab)
   }
-  const chooseChapter=(next:'resources'|'requests'|'events'|'cred')=>{
-    if(next==='events'){
+  const selectWorld=(id:'resources'|'requests'|'events'|'cred')=>{
+    setChapter(id)
+    if(id==='events'){
       document.getElementById('cube-events-section')?.scrollIntoView({behavior:'smooth',block:'start'})
       return
     }
-    onJump(next as Tab)
+    onJump(id as Tab)
   }
-  return <section className="cube-world-wrap">
+  return <section className="cube-world-wrap cube-gallery-showcase">
     <div className="cube-world-copy">
-      <span className="cube-kicker">CUBE / SPATIAL CAMPUS</span>
-      <h2>Not another flat dashboard.</h2>
-      <p>Scroll through four functional chapters. The scene changes focus as you move, then hands you directly to the feature you just explored.</p>
-      <div className="cube-world-legend"><span className={chapter==='resources'?'is-active':''}><i className="resource-dot"/>Resources</span><span className={chapter==='requests'?'is-active':''}><i className="request-dot"/>Requests</span><span className={chapter==='events'?'is-active':''}><i className="event-dot"/>Events</span><span className={chapter==='cred'?'is-active':''}><i className="cred-dot"/>Cred</span></div>
+      <span className="cube-kicker">CUBE / INTERACTIVE GALLERY</span>
+      <h2>A campus you can explore.</h2>
+      <p>Four tiny worlds. Four real parts of CUBE. Scroll to transform the scene, drag to orbit it, or tap a world to enter the actual feature.</p>
+      <div className="cube-world-legend">
+        {worlds.map((world)=><button key={world.id} className={world.id===chapter?'is-active':''} onClick={()=>selectWorld(world.id)}><i className={world.id==='resources'?'resource-dot':world.id==='requests'?'request-dot':world.id==='events'?'event-dot':'cred-dot'}/>{world.label.replace(' WORLD','')}</button>)}
+      </div>
+      <div className="cube-gallery-rail">
+        {worlds.map((world)=><button key={world.id} className={world.id===chapter?'is-active':''} onClick={()=>selectWorld(world.id)}>
+          <span>{world.number}</span><div><strong>{world.title}</strong><small>{world.label}</small></div><ArrowUpRight size={14}/>
+        </button>)}
+      </div>
     </div>
-    <div className="cube-world-stage">
+    <div className="cube-world-stage cube-gallery-stage">
       <CubeWorldScene
         accent={theme.accent}
         accent2={theme.accent2}
         primary={theme.primary}
         onChapterChange={setChapter}
-        onObjectActivate={(target)=>{
-          if(target==='events'){
-            document.getElementById('cube-events-section')?.scrollIntoView({behavior:'smooth',block:'start'})
-          }else{
-            onJump(target as Tab)
-          }
-        }}
+        onObjectActivate={(target)=>openWorld(target)}
       />
+      <div className="cube-gallery-number">{current.number}</div>
+      <div className="cube-gallery-caption">
+        <span className="cube-kicker">{current.label}</span>
+        <strong>{current.title}</strong>
+      </div>
       <div className="cube-world-story-card" key={chapter}>
-        <span className="cube-kicker">{details.eyebrow}</span>
-        <strong>{details.title}</strong>
-        <small>{details.text}</small>
-        <button onClick={openChapter}>{details.button}<ArrowUpRight size={14}/></button>
+        <span className="cube-kicker">{current.label}</span>
+        <strong>{current.title}</strong>
+        <small>{current.text}</small>
+        <button onClick={()=>openWorld(chapter)}>{current.action}<ArrowUpRight size={14}/></button>
       </div>
-      <div className="cube-world-chapters" aria-label="Spatial campus chapters">
-        {(['resources','requests','events','cred'] as const).map((item)=><button key={item} className={item===chapter?'is-active':''} onClick={()=>chooseChapter(item)} aria-label={item}>{item.slice(0,1).toUpperCase()}</button>)}
+      <div className="cube-world-chapters" aria-label="Interactive gallery chapters">
+        {worlds.map((world)=><button key={world.id} className={world.id===chapter?'is-active':''} onClick={()=>selectWorld(world.id)} aria-label={world.label}>{world.number}</button>)}
       </div>
-      <div className="cube-world-swipe"><span>Scroll to change · drag to orbit</span><i/></div>
+      <div className="cube-world-swipe"><span>Scroll · drag · tap a world</span><i/></div>
     </div>
   </section>
 }
-
 function HomeView(props: any) {
   const { loading, theme, spendable, monthly, query, setQuery, resources, saved, liked, toggleSaved, toggleLiked, downloadResource, onOpenFeature, onSeeResources, onJump, events, registerEvent, lostItems, resolveLostItem, setModal, offers, setNotice } = props
   return <div className="cube-page">
