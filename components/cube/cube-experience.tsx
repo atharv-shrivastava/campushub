@@ -537,7 +537,13 @@ function SpatialCampus({onJump,theme}:{onJump:(tab:Tab)=>void;theme:Theme}) {
     events:{eyebrow:'03 / EVENTS',title:'See what is happening next.',text:'The event beacon becomes the focus. Jump straight to the live campus calendar instead of hunting for it.',button:'Open Events'},
     cred:{eyebrow:'04 / CRED',title:'Your contribution has weight.',text:'The final chapter brings Cred forward. Spend it, earn it, and see the wallet behind the system.',button:'Open Cred'},
   }[chapter]
-  const chapterTab={resources:'resources',requests:'requests',events:'home',cred:'cred'}[chapter] as Tab
+  const openChapter=()=>{
+    if(chapter==='events'){
+      document.getElementById('cube-events-section')?.scrollIntoView({behavior:'smooth',block:'start'})
+      return
+    }
+    onJump(chapter as Tab)
+  }
   return <section className="cube-world-wrap">
     <div className="cube-world-copy">
       <span className="cube-kicker">CUBE / SPATIAL CAMPUS</span>
@@ -551,10 +557,10 @@ function SpatialCampus({onJump,theme}:{onJump:(tab:Tab)=>void;theme:Theme}) {
         <span className="cube-kicker">{details.eyebrow}</span>
         <strong>{details.title}</strong>
         <small>{details.text}</small>
-        <button onClick={()=>onJump(chapterTab)}>{details.button}<ArrowUpRight size={14}/></button>
+        <button onClick={openChapter}>{details.button}<ArrowUpRight size={14}/></button>
       </div>
       <div className="cube-world-chapters" aria-label="Spatial campus chapters">
-        {(Object.keys(details ? {resources:1,requests:1,events:1,cred:1}: {}) as Array<'resources'|'requests'|'events'|'cred'>).map((item)=><button key={item} className={item===chapter?'is-active':''} onClick={()=>setChapter(item)} aria-label={item}>{item.slice(0,1).toUpperCase()}</button>)}
+        {(['resources','requests','events','cred'] as const).map((item)=><button key={item} className={item===chapter?'is-active':''} onClick={()=>setChapter(item)} aria-label={item}>{item.slice(0,1).toUpperCase()}</button>)}
       </div>
       <div className="cube-world-swipe"><span>Scroll to change · drag to orbit</span><i/></div>
     </div>
@@ -576,7 +582,7 @@ function HomeView(props: any) {
 
     <section className="cube-split-grid"><div className="cube-large-card cube-request-feature"><div><span className="cube-kicker">Campus Requests</span><h2>Small favors can become a campus superpower.</h2><p>Lock Cred, ask for help, deliver the task, and let the system handle the release.</p><button className="cube-ghost-cta" onClick={()=>onJump('requests')}>Open requests <ArrowUpRight size={16}/></button></div><div className="cube-stack-art"><span className="cube-paper paper-a"/><span className="cube-paper paper-b"/><span className="cube-paper paper-c"/><span className="cube-coin">C</span></div></div><div className="cube-large-card cube-cred-feature"><span className="cube-kicker">Cred wallet</span><div className="cube-cred-head"><span className="cube-mini-label">Spendable</span><strong>{spendable}</strong><span className="cube-cred-unit">C</span></div><div className="cube-wave"/><div className="cube-cred-foot"><span><span className="cube-dot"/> Monthly {monthly}</span><button onClick={()=>onJump('cred')}>Open wallet <ChevronRight size={15}/></button></div></div></section>
 
-    <section className="cube-section"><SectionHeading eyebrow="This week" title="Things happening around you" action="Explore"/><div className="cube-event-row">{events.map((event:any,index:number)=><motion.article className={`cube-event-card cube-3d-card-interactive event-${event.color}`} key={event.id} style={{transformStyle:'preserve-3d'}} whileHover={{y:-5,rotateX:-2,rotateY:index%2?1.5:-1.5,z:8}} whileTap={{scale:.975,rotateX:1,z:-3}} initial={{opacity:0,y:14}} whileInView={{opacity:1,y:0}} viewport={{once:true,amount:.2}} transition={{delay:index*.08}}><div className="cube-event-poster"><span>{event.date}</span><strong>{event.title}</strong><small>{event.kind}</small><i/></div><div className="cube-event-meta"><MapPin size={14}/>{event.place}<button className="cube-event-register" onClick={()=>registerEvent(event.id)}>{event.registered?<><Check size={13}/>Registered</>:'Join'}</button></div></motion.article>)}</div></section>
+    <section id="cube-events-section" className="cube-section"><SectionHeading eyebrow="This week" title="Things happening around you" action="Explore"/><div className="cube-event-row">{events.map((event:any,index:number)=><motion.article className={`cube-event-card cube-3d-card-interactive event-${event.color}`} key={event.id} style={{transformStyle:'preserve-3d'}} whileHover={{y:-5,rotateX:-2,rotateY:index%2?1.5:-1.5,z:8}} whileTap={{scale:.975,rotateX:1,z:-3}} initial={{opacity:0,y:14}} whileInView={{opacity:1,y:0}} viewport={{once:true,amount:.2}} transition={{delay:index*.08}}><div className="cube-event-poster"><span>{event.date}</span><strong>{event.title}</strong><small>{event.kind}</small><i/></div><div className="cube-event-meta"><MapPin size={14}/>{event.place}<button className="cube-event-register" onClick={()=>registerEvent(event.id)}>{event.registered?<><Check size={13}/>Registered</>:'Join'}</button></div></motion.article>)}</div></section>
 
     <section className="cube-split-grid"><div className="cube-small-card cube-lost-card"><SectionHeading eyebrow="Lost & Found" title="Tiny mysteries, solved." action="Post" onClick={()=>setModal('lost')}/>{lostItems.slice(0,3).map((item:any)=><div className="cube-lost-item" key={item.id}><span className={`cube-lost-art ${item.type==='FOUND'?'mint':'lavender'}`}><Archive size={18}/></span><div><strong>{item.title}</strong><small>{item.place}</small></div><span className={`cube-status ${item.type.toLowerCase()}`}>{item.status==='RESOLVED'?'RESOLVED':item.type}</span>{item.status!=='RESOLVED'&&<button className="cube-inline-action" onClick={()=>resolveLostItem(item.id)} aria-label="Resolve listing"><Check size={13}/></button>}</div>)}<button className="cube-inline-link" onClick={()=>setModal('lost')}><Plus size={14}/> Add a listing</button></div><div className="cube-small-card cube-offer-card"><SectionHeading eyebrow="Nearby" title="Useful little deals" action="Open"/>{offers.map((offer:any)=><button className="cube-offer-item cube-offer-button" key={offer.name} onClick={()=>setNotice(`${offer.name}: ${offer.offer}`)}><span className="cube-offer-logo">{offer.icon}</span><div><strong>{offer.name}</strong><small>{offer.offer}</small><em>{offer.meta}</em></div><ChevronRight size={15}/></button>)}</div></section>
   </div>
