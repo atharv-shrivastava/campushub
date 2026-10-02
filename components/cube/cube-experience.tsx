@@ -557,15 +557,28 @@ function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
   )
 }
 
-function SpatialCampus({onJump,theme}:{onJump:(tab:Tab)=>void;theme:Theme}) {
+function SpatialCampus(props:any) {
+  const {onJump,theme,resources,requests,events,spendable,monthly,saved,liked,toggleSaved,toggleLiked,downloadResource,acceptRequest,registerEvent,redeem,setModal}=props
+  const sectionRef=useRef<HTMLElement>(null)
   const [chapter,setChapter]=useState<'resources'|'requests'|'events'|'cred'>('resources')
   const worlds=[
-    {id:'resources' as const,number:'01',label:'STUDY WORLD',title:'Notes become a space.',text:'Flip through your semester library as a visual scene. Tap the world to open Resources.',tab:'resources' as Tab,action:'Open Resources'},
-    {id:'requests' as const,number:'02',label:'HELP WORLD',title:'A favor gets a pathway.',text:'The package follows the handoff path. Tap it to move straight into campus requests.',tab:'requests' as Tab,action:'Open Requests'},
-    {id:'events' as const,number:'03',label:'EVENT WORLD',title:'Campus starts moving.',text:'The beacon pulses when events take focus. Tap it to jump to what is happening this week.',tab:'home' as Tab,action:'See Events'},
-    {id:'cred' as const,number:'04',label:'CRED WORLD',title:'Your contribution has weight.',text:'The virtual wallet turns contribution into something visible. Tap it to open Cred.',tab:'cred' as Tab,action:'Open Cred'},
+    {id:'resources' as const,number:'01',label:'STUDY WORLD',title:'Notes become a space.',text:'Browse a live resource from your library, save it, like it or download it without leaving the gallery.',action:'Open Resources'},
+    {id:'requests' as const,number:'02',label:'HELP WORLD',title:'A favor gets a pathway.',text:'See a real open request, accept it with one tap, and watch the state change in the same scene.',action:'Open Requests'},
+    {id:'events' as const,number:'03',label:'EVENT WORLD',title:'Campus starts moving.',text:'Join an actual campus event from inside the scene. The registered count updates immediately.',action:'See Events'},
+    {id:'cred' as const,number:'04',label:'CRED WORLD',title:'Your contribution has weight.',text:'Your live Spendable and Monthly Cred appear here, with a real one-tap reward redemption.',action:'Open Cred'},
   ]
   const current=worlds.find((world)=>world.id===chapter) ?? worlds[0]
+  const scrollToChapter=(id:'resources'|'requests'|'events'|'cred')=>{
+    setChapter(id)
+    const section=sectionRef.current
+    if(!section)return
+    const index=worlds.findIndex((world)=>world.id===id)
+    const rect=section.getBoundingClientRect()
+    const absoluteTop=window.scrollY+rect.top
+    const travel=Math.max(1,section.offsetHeight-window.innerHeight)
+    const target=absoluteTop+([.125,.375,.625,.875][index]??.125)*travel
+    window.scrollTo({top:target,behavior:'smooth'})
+  }
   const openWorld=(id:'resources'|'requests'|'events'|'cred')=>{
     if(id==='events'){
       document.getElementById('cube-events-section')?.scrollIntoView({behavior:'smooth',block:'start'})
@@ -573,51 +586,96 @@ function SpatialCampus({onJump,theme}:{onJump:(tab:Tab)=>void;theme:Theme}) {
     }
     onJump(id as Tab)
   }
-  const selectWorld=(id:'resources'|'requests'|'events'|'cred')=>{
-    setChapter(id)
-    if(id==='events'){
-      document.getElementById('cube-events-section')?.scrollIntoView({behavior:'smooth',block:'start'})
-      return
-    }
-    onJump(id as Tab)
-  }
-  return <section className="cube-world-wrap cube-gallery-showcase">
-    <div className="cube-world-copy">
+  const liveResource=resources[0]
+  const liveRequest=requests.find((item:any)=>item.state==='OPEN'&&!item.createdByMe)||requests[0]
+  const liveEvent=events[0]
+  return <section ref={sectionRef} className="cube-world-wrap cube-gallery-showcase">
+    <div className="cube-world-copy cube-gallery-copy-sticky">
       <span className="cube-kicker">CUBE / INTERACTIVE GALLERY</span>
       <h2>A campus you can explore.</h2>
-      <p>Four tiny worlds. Four real parts of CUBE. Scroll to transform the scene, drag to orbit it, or tap a world to enter the actual feature.</p>
+      <p>Not a decorative 3D demo. Each world below is a live CUBE feature. Scroll to change worlds, interact with the object, then enter the full feature.</p>
       <div className="cube-world-legend">
-        {worlds.map((world)=><button key={world.id} className={world.id===chapter?'is-active':''} onClick={()=>selectWorld(world.id)}><i className={world.id==='resources'?'resource-dot':world.id==='requests'?'request-dot':world.id==='events'?'event-dot':'cred-dot'}/>{world.label.replace(' WORLD','')}</button>)}
+        {worlds.map((world)=><button key={world.id} className={world.id===chapter?'is-active':''} onClick={()=>scrollToChapter(world.id)}><i className={world.id==='resources'?'resource-dot':world.id==='requests'?'request-dot':world.id==='events'?'event-dot':'cred-dot'}/>{world.label.replace(' WORLD','')}</button>)}
       </div>
       <div className="cube-gallery-rail">
-        {worlds.map((world)=><button key={world.id} className={world.id===chapter?'is-active':''} onClick={()=>selectWorld(world.id)}>
+        {worlds.map((world)=><button key={world.id} className={world.id===chapter?'is-active':''} onClick={()=>scrollToChapter(world.id)}>
           <span>{world.number}</span><div><strong>{world.title}</strong><small>{world.label}</small></div><ArrowUpRight size={14}/>
         </button>)}
       </div>
     </div>
+
     <div className="cube-world-stage cube-gallery-stage">
       <CubeWorldScene
         accent={theme.accent}
         accent2={theme.accent2}
         primary={theme.primary}
         onChapterChange={setChapter}
-        onObjectActivate={(target)=>openWorld(target)}
+        onObjectActivate={(target)=>scrollToChapter(target)}
       />
       <div className="cube-gallery-number">{current.number}</div>
       <div className="cube-gallery-caption">
         <span className="cube-kicker">{current.label}</span>
         <strong>{current.title}</strong>
       </div>
-      <div className="cube-world-story-card" key={chapter}>
-        <span className="cube-kicker">{current.label}</span>
-        <strong>{current.title}</strong>
-        <small>{current.text}</small>
-        <button onClick={()=>openWorld(chapter)}>{current.action}<ArrowUpRight size={14}/></button>
+
+      <div className="cube-live-panel" key={chapter}>
+        <div className="cube-live-panel-head">
+          <div><span className="cube-kicker">LIVE FEATURE</span><strong>{current.label}</strong></div>
+          <span className="cube-live-state"><i/> Interactive</span>
+        </div>
+
+        {chapter==='resources' && <div className="cube-live-content">
+          {liveResource ? <>
+            <span className="cube-live-index">RESOURCE 01</span>
+            <strong>{liveResource.title}</strong>
+            <small>{liveResource.subject} · {liveResource.tag} · {liveResource.votes} likes</small>
+            <div className="cube-live-actions">
+              <button onClick={()=>toggleLiked(liveResource.id)}>{liked.includes(liveResource.id)?'Liked':'Like'}</button>
+              <button onClick={()=>toggleSaved(liveResource.id)}>{saved.includes(liveResource.id)?'Saved':'Save'}</button>
+              <button onClick={()=>downloadResource(liveResource)}>Download</button>
+              <button className="is-primary" onClick={()=>setModal('upload')}><UploadCloud size={13}/> Share</button>
+            </div>
+          </> : <small>No resources loaded yet.</small>}
+        </div>}
+
+        {chapter==='requests' && <div className="cube-live-content">
+          {liveRequest ? <>
+            <span className="cube-live-index">REQUEST · {liveRequest.state}</span>
+            <strong>{liveRequest.title}</strong>
+            <small>{liveRequest.bounty} Cred bounty · {liveRequest.detail}</small>
+            <div className="cube-live-actions">
+              {liveRequest.state==='OPEN'&&!liveRequest.createdByMe && <button className="is-primary" onClick={()=>acceptRequest(liveRequest.id)}><Check size={13}/> Accept request</button>}
+              {liveRequest.state!=='OPEN' && <span className="cube-live-result"><Check size={13}/> {liveRequest.state}</span>}
+              <button onClick={()=>setModal('request')}><Plus size={13}/> Create request</button>
+            </div>
+          </> : <small>No requests loaded yet.</small>}
+        </div>}
+
+        {chapter==='events' && <div className="cube-live-content">
+          {liveEvent ? <>
+            <span className="cube-live-index">NEXT EVENT · {liveEvent.date}</span>
+            <strong>{liveEvent.title}</strong>
+            <small>{liveEvent.kind} · {liveEvent.place}</small>
+            <div className="cube-live-actions">
+              <button className="is-primary" onClick={()=>registerEvent(liveEvent.id)}>{liveEvent.registered?<><Check size={13}/> Registered</>:'Join event'}</button>
+              <button onClick={()=>openWorld('events')}>See all events</button>
+            </div>
+          </> : <small>No events loaded yet.</small>}
+        </div>}
+
+        {chapter==='cred' && <div className="cube-live-content">
+          <span className="cube-live-index">YOUR LIVE WALLET</span>
+          <strong>{spendable} Spendable C</strong>
+          <small>{monthly} Monthly Cred · Spendable persists · Monthly resets</small>
+          <div className="cube-live-reward"><span><Zap size={13}/> Resource Boost</span><strong>40 C</strong><button onClick={()=>redeem(40,'Resource Boost')} disabled={spendable<40}>Redeem</button></div>
+          <div className="cube-live-actions"><button className="is-primary" onClick={()=>openWorld('cred')}>Open Cred Store <ArrowUpRight size={13}/></button></div>
+        </div>}
       </div>
+
       <div className="cube-world-chapters" aria-label="Interactive gallery chapters">
-        {worlds.map((world)=><button key={world.id} className={world.id===chapter?'is-active':''} onClick={()=>selectWorld(world.id)} aria-label={world.label}>{world.number}</button>)}
+        {worlds.map((world)=><button key={world.id} className={world.id===chapter?'is-active':''} onClick={()=>scrollToChapter(world.id)} aria-label={world.label}>{world.number}</button>)}
       </div>
-      <div className="cube-world-swipe"><span>Scroll · drag · tap a world</span><i/></div>
+      <div className="cube-world-swipe"><span>Scroll · drag · tap · interact</span><i/></div>
     </div>
   </section>
 }
@@ -626,7 +684,24 @@ function HomeView(props: any) {
   return <div className="cube-page">
     <section className="cube-hero"><div className="cube-hero-copy"><motion.span className="cube-live-pill" animate={{y:[0,-2,0]}} transition={{duration:3,repeat:Infinity,ease:'easeInOut'}}><span className="cube-live-dot"/> Friday · Week 7</motion.span><h1>Your campus,<br/><em>beautifully alive.</em></h1><p>Resources, people, requests, events and little campus moments, all in one place.</p><div className="cube-search-wrap"><Search size={19}/><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Search notes, requests, events..." aria-label="Search CampusHub"/><kbd>⌘ K</kbd></div><div className="cube-quick-row"><button onClick={()=>onJump('resources')}><BookOpen size={16}/> Study</button><button onClick={()=>onJump('requests')}><Zap size={16}/> Help someone</button><button onClick={()=>onJump('cred')}><Gift size={16}/> Spend Cred</button></div></div><motion.div className="cube-hero-orb" initial={{opacity:0,scale:.9,rotate:-4}} animate={{opacity:1,scale:1,rotate:0}} transition={{duration:.8}}><CubeScene accent={theme.primary} accent2={theme.accent2} intensity={1.05}/><div className="cube-hero-orb-caption"><span>03</span><small>things worth opening</small></div></motion.div></section>
 
-    <SpatialCampus onJump={onJump} theme={theme} />
+    <SpatialCampus
+      onJump={onJump}
+      theme={theme}
+      resources={resources}
+      requests={requests}
+      events={events}
+      spendable={spendable}
+      monthly={monthly}
+      saved={saved}
+      liked={liked}
+      toggleSaved={toggleSaved}
+      toggleLiked={toggleLiked}
+      downloadResource={downloadResource}
+      acceptRequest={acceptRequest}
+      registerEvent={registerEvent}
+      redeem={redeem}
+      setModal={setModal}
+    />
 
     <section className="cube-feature-rail">{[['Academic resources',BookOpen,'lavender','Notes, assignments & PYQs'],['Campus requests',Send,'mint','Tasks powered by Cred'],['Events & clubs',Compass,'peach','What is happening next'],['Lost & found',PackageSearch,'yellow','Find what wandered off'],['Local offers',Store,'blue','Student-friendly deals']].map(([title,Icon,tone,desc],index)=>{const I=Icon as typeof BookOpen;return <motion.button key={String(title)} className={`cube-feature-card cube-3d-card-interactive tone-${tone}`} style={{transformStyle:'preserve-3d'}} whileTap={{scale:.965,rotateX:1,z:-4}} whileHover={{y:-5,rotateX:-2,rotateY:index%2?2:-2,z:9}} onClick={()=>onOpenFeature(String(title))}><span className="cube-feature-number">0{index+1}</span><span className="cube-feature-icon"><I size={20}/></span><strong>{String(title)}</strong><small>{String(desc)}</small><span className="cube-feature-arrow"><ArrowUpRight size={16}/></span></motion.button>})}</section>
 
