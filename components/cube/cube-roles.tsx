@@ -136,6 +136,15 @@ export function ClubView({session,onLogout,setNotice}:{session:CubeSession;onLog
   const [startsAt,setStartsAt]=useState('')
   const [busy,setBusy]=useState(false)
 
+  useEffect(() => {
+    void cubeApi.user(session.id).clubs.me().then((club) => {
+      if (club) {
+        setClubName(club.name)
+        setStatus(club.status)
+      }
+    }).catch(() => {})
+  }, [session.id])
+
   const register=async(e:FormEvent)=>{
     e.preventDefault();setBusy(true)
     try{const club=await cubeApi.user(session.id).clubs.register(clubName);setStatus(club.status);setNotice(club.status==='APPROVED'?'Club approved':'Club submitted · waiting for admin')}catch(error){setNotice(error instanceof Error?error.message:'Club registration failed')}finally{setBusy(false)}
@@ -155,15 +164,21 @@ export function ClubView({session,onLogout,setNotice}:{session:CubeSession;onLog
 export function AdminView({setNotice,onLogout}:{setNotice:(v:string)=>void;onLogout:()=>void}) {
   const [clubs,setClubs]=useState<any[]>([])
   const [events,setEvents]=useState<any[]>([])
+  const [disputes,setDisputes]=useState<any[]>([])
   const [loading,setLoading]=useState(true)
-  const refresh=async()=>{setLoading(true);try{const api=cubeApi.admin('true-admin');const [c,e]=await Promise.all([api.pendingClubs(),api.pendingEvents()]);setClubs(c);setEvents(e)}catch{setNotice('Admin API unavailable')}finally{setLoading(false)}}
+  const refresh=async()=>{setLoading(true);try{const api=cubeApi.admin('true-admin');const [c,e,r]=await Promise.all([api.pendingClubs(),api.pendingEvents(),api.requests()]);setClubs(c);setEvents(e);setDisputes(r.filter((item:any)=>item.state==='DISPUTED'))}catch{setNotice('Admin API unavailable')}finally{setLoading(false)}}
   useEffect(()=>{void refresh()},[])
   const moderateClub=async(id:number,approve:boolean)=>{try{await cubeApi.admin('true-admin').moderateClub(id,approve);setNotice(approve?'Club approved':'Club rejected');await refresh()}catch{setNotice('Could not moderate club')}}
   const moderateEvent=async(id:number,approve:boolean)=>{try{await cubeApi.admin('true-admin').moderateEvent(id,approve);setNotice(approve?'Event published':'Event rejected');await refresh()}catch{setNotice('Could not moderate event')}}
+  const resolveDispute=async(id:number,outcome:'COMPLETED'|'REFUNDED'|'FORFEITED')=>{try{await cubeApi.admin('true-admin').resolveRequest(id,outcome);setNotice(`Dispute resolved · ${outcome}`);await refresh()}catch{setNotice('Could not resolve dispute')}}
   return <div className="cube-page"><div className="cube-page-head"><PageEyebrow label="Admin Control"/><div><h1>Keep the campus healthy.</h1><p>Moderation is human-led. The admin decides what becomes public.</p></div><button className="cube-secondary-cta" onClick={onLogout}>Log out</button></div>
     <div className="cube-admin-banner"><ShieldCheck size={22}/><div><strong>Human moderation</strong><span>Clubs and events stay pending until an admin action changes their state.</span></div><button onClick={()=>void refresh()}>Refresh</button></div>
     <div className="cube-admin-grid"><div className="cube-large-card"><SectionTitle icon={<Users size={17}/>} title={`Pending clubs · ${clubs.length}`}/>{loading?<SkeletonRole/>:clubs.length?clubs.map((club)=><div className="cube-admin-row" key={club.id}><div><strong>{club.name}</strong><small>{club.ownerExternalId}</small></div><div className="cube-action-row"><button className="cube-small-cta" onClick={()=>void moderateClub(club.id,true)}>Approve</button><button className="cube-danger-cta" onClick={()=>void moderateClub(club.id,false)}>Reject</button></div></div>):<EmptyRole text="No clubs waiting for review."/>}</div>
       <div className="cube-large-card"><SectionTitle icon={<CalendarDays size={17}/>} title={`Pending events · ${events.length}`}/>{loading?<SkeletonRole/>:events.length?events.map((event)=><div className="cube-admin-row" key={event.id}><div><strong>{event.title}</strong><small>{event.kind} · {event.venue}</small></div><div className="cube-action-row"><button className="cube-small-cta" onClick={()=>void moderateEvent(event.id,true)}>Publish</button><button className="cube-danger-cta" onClick={()=>void moderateEvent(event.id,false)}>Reject</button></div></div>):<EmptyRole text="No events waiting for review."/>}</div>
+      <div className="cube-large-card">
+        <SectionTitle icon={<Flag size={17}/>} title={`Disputed requests · ${disputes.length}`}/>
+        {loading?<SkeletonRole/>:disputes.length?disputes.map((item:any)=><div className="cube-admin-row" key={item.id}><div><strong>{item.title}</strong><small>{item.bounty} Cred · helper {item.helperExternalId || 'unassigned'}</small></div><div className="cube-action-row"><button className="cube-small-cta" onClick={()=>void resolveDispute(item.id,'COMPLETED')}>Pay helper</button><button className="cube-small-cta" onClick={()=>void resolveDispute(item.id,'REFUNDED')}>Refund</button><button className="cube-danger-cta" onClick={()=>void resolveDispute(item.id,'FORFEITED')}>Forfeit</button></div></div>):<EmptyRole text="No disputes waiting for review."/>
+      </div>
     </div>
   </div>
 }
