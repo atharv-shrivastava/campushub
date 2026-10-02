@@ -1,33 +1,78 @@
-# campushub
+# CampusHub — immersive UI lab
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [v0](https://v0.app).
+This branch is a separate visual/product-design track for CampusHub:
 
-## Built with v0
+`design/cube-immersive-ui`
 
-This repository is linked to a [v0](https://v0.app) project. You can continue developing by visiting the link below -- start new chats to make changes, and v0 will push commits directly to this repo. Every merge to `main` will automatically deploy.
+It leaves `main` untouched while exploring a more expressive mobile-first experience.
 
-[Continue working on v0 →](https://v0.app/chat/projects/prj_7vnnV3oi7mTL9YeqpTsWZOQphi4n)
+## Visual system
 
-## Getting Started
+Five complete theme options are included:
 
-First, run the development server:
+1. Emerald & Champagne
+2. Lavender & Apricot
+3. Ocean & Mint
+4. Peach & Berry
+5. Butter & Lilac
+
+The design combines vivid pastel surfaces, vector-art-inspired composition, selective glassmorphism, soft depth, and motion.
+
+## Interaction
+
+The root experience includes:
+
+- Mobile bottom navigation
+- Animated page transitions
+- Interactive search and resource filtering
+- Save/bookmark state
+- Resource likes/votes
+- Request state transitions
+- Cred redemption
+- Notifications drawer
+- Theme switcher
+- Feature explanation sheets
+- Loading-friendly card surfaces
+- Reduced-motion support
+- A lightweight Three.js 3D hero scene
+
+## Product logic represented by the UI
+
+CampusHub remains the ecosystem for:
+
+- Academic resources
+- Campus Requests
+- Monthly / Spendable / Conduct Cred
+- Escrow-style request delivery
+- Clubs and events
+- Lost & Found
+- Local student-oriented offers
+- Notifications
+- Reports and moderation
+- Admin management
+
+The root design currently uses local demo state so the interaction layer can be explored without a backend. It is deliberately written around backend-friendly states and should connect to the Java/Spring Boot REST backend later.
+
+## Stack
+
+- Next.js 16
+- React 19
+- Tailwind CSS 4
+- Motion
+- Lucide
+- Three.js
+
+Three.js is loaded dynamically and kept deliberately small for mobile performance.
+
+## Running locally
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open the root route.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Boundary
 
-## Learn More
-
-To learn more, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [v0 Documentation](https://v0.app/docs) - learn about v0 and how to use it.
+This branch is the immersive frontend/product track. It does **not** claim to contain the Java/Spring Boot backend, PostgreSQL persistence, JWT security, or production escrow/accounting implementation yet. Those belong in the backend integration layer.
