@@ -229,7 +229,7 @@ export function CubeWorldScene({accent,accent2,primary,onChapterChange,onObjectA
 
         drawParticles(particleBuf,particleCount,projection,view)
 
-        raf=requestAnimationFrame(render)        raf=requestAnimationFrame(render)
+        raf=requestAnimationFrame(render)
       }
 
       const resize=()=>{canvas.style.width='100%';canvas.style.height='100%'}
