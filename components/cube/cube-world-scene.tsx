@@ -4,171 +4,160 @@ import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
 
 type Props = { accent:string; accent2:string; primary:string }
-
 type Vec3=[number,number,number]
 
-const mat4Identity=():number[]=>[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]
-const mat4Multiply=(a:number[],b:number[])=>{const o=new Array(16).fill(0);for(let r=0;r<4;r++)for(let c=0;c<4;c++)for(let k=0;k<4;k++)o[c+r*4]+=a[k+r*4]*b[c+k*4];return o}
-const translate=(x:number,y:number,z:number)=>[1,0,0,0,0,1,0,0,0,0,1,0,x,y,z,1]
-const scale=(x:number,y:number,z:number)=>[x,0,0,0,0,y,0,0,0,0,z,0,0,0,0,1]
-const rotX=(a:number)=>{const c=Math.cos(a),s=Math.sin(a);return[1,0,0,0,0,c,s,0,0,-s,c,0,0,0,0,1]}
-const rotY=(a:number)=>{const c=Math.cos(a),s=Math.sin(a);return[c,0,-s,0,0,1,0,0,s,0,c,0,0,0,0,1]}
-const rotZ=(a:number)=>{const c=Math.cos(a),s=Math.sin(a);return[c,s,0,0,-s,c,0,0,0,0,1,0,0,0,0,1]}
-const perspective=(fovy:number,aspect:number,near:number,far:number)=>{const f=1/Math.tan(fovy/2),nf=1/(near-far);return[f/aspect,0,0,0,0,f,0,0,0,0,(far+near)*nf,-1,0,0,(2*far*near)*nf,0]}
-const normalize=(v:Vec3)=>{const l=Math.hypot(v[0],v[1],v[2])||1;return[v[0]/l,v[1]/l,v[2]/l] as Vec3}
+const I=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]
+const mul=(a:number[],b:number[])=>{const o=new Array(16).fill(0);for(let c=0;c<4;c++)for(let r=0;r<4;r++)for(let k=0;k<4;k++)o[c*4+r]+=a[k*4+r]*b[c*4+k];return o}
+const t=(x:number,y:number,z:number)=>[1,0,0,0,0,1,0,0,0,0,1,0,x,y,z,1]
+const s=(x:number,y:number,z:number)=>[x,0,0,0,0,y,0,0,0,0,z,0,0,0,0,1]
+const rx=(a:number)=>{const c=Math.cos(a),q=Math.sin(a);return[1,0,0,0,0,c,q,0,0,-q,c,0,0,0,0,1]}
+const ry=(a:number)=>{const c=Math.cos(a),q=Math.sin(a);return[c,0,-q,0,0,1,0,0,q,0,c,0,0,0,0,1]}
+const rz=(a:number)=>{const c=Math.cos(a),q=Math.sin(a);return[c,q,0,0,-q,c,0,0,0,0,1,0,0,0,0,1]}
+const persp=(fovy:number,aspect:number,near:number,far:number)=>{const f=1/Math.tan(fovy/2),nf=1/(near-far);return[f/aspect,0,0,0,0,f,0,0,0,0,(far+near)*nf,-1,0,0,(2*far*near)*nf,0]}
+const norm=(v:Vec3)=>{const l=Math.hypot(v[0],v[1],v[2])||1;return[v[0]/l,v[1]/l,v[2]/l] as Vec3}
 const cross=(a:Vec3,b:Vec3):Vec3=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]]
 const sub=(a:Vec3,b:Vec3):Vec3=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]]
 const dot=(a:Vec3,b:Vec3)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2]
-const lookAt=(eye:Vec3,target:Vec3,up:Vec3)=>{const z=normalize(sub(eye,target)),x=normalize(cross(up,z)),y=cross(z,x);return[x[0],y[0],z[0],0,x[1],y[1],z[1],0,x[2],y[2],z[2],0,-dot(x,eye),-dot(y,eye),-dot(z,eye),1]}
+const look=(eye:Vec3,target:Vec3,up:Vec3)=>{const z=norm(sub(eye,target)),x=norm(cross(up,z)),y=cross(z,x);return[x[0],y[0],z[0],0,x[1],y[1],z[1],0,x[2],y[2],z[2],0,-dot(x,eye),-dot(y,eye),-dot(z,eye),1]}
 
-const cubeVertices=new Float32Array([
- -1,-1,-1, 1,-1,-1, 1,1,-1, -1,1,-1,
- -1,-1,1, 1,-1,1, 1,1,1, -1,1,1,
-])
-const cubeIndices=new Uint16Array([
- 0,1,2,0,2,3, 4,6,5,4,7,6, 0,4,5,0,5,1,
- 3,2,6,3,6,7, 0,3,7,0,7,4, 1,5,6,1,6,2,
-])
-const floorVertices=new Float32Array([-8,-1.5,-6,8,-1.5,-6,8,-1.5,6,-8,-1.5,6])
-const floorIndices=new Uint16Array([0,1,2,0,2,3])
+const cubeV=new Float32Array([-1,-1,-1,1,-1,-1,1,1,-1,-1,1,-1,-1,-1,1,1,-1,1,1,1,1,-1,1,1])
+const cubeI=new Uint16Array([0,1,2,0,2,3,4,6,5,4,7,6,0,4,5,0,5,1,3,2,6,3,6,7,0,3,7,0,7,4,1,5,6,1,6,2])
+const floorV=new Float32Array([-8,-1.5,-6,8,-1.5,-6,8,-1.5,6,-8,-1.5,6])
+const floorI=new Uint16Array([0,1,2,0,2,3])
 
-function hexToRgb(hex:string){const h=hex.replace('#','');return[parseInt(h.slice(0,2),16)/255,parseInt(h.slice(2,4),16)/255,parseInt(h.slice(4,6),16)/255]}
-function program(gl:WebGLRenderingContext,vsSource:string,fsSource:string){const compile=(type:number,src:string)=>{const s=gl.createShader(type)!;gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s)||'shader error');return s};const vs=compile(gl.VERTEX_SHADER,vsSource),fs=compile(gl.FRAGMENT_SHADER,fsSource),p=gl.createProgram()!;gl.attachShader(p,vs);gl.attachShader(p,fs);gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p)||'program error');gl.deleteShader(vs);gl.deleteShader(fs);return p}
+function rgb(hex:string){const h=hex.replace('#','');return[parseInt(h.slice(0,2),16)/255,parseInt(h.slice(2,4),16)/255,parseInt(h.slice(4,6),16)/255]}
+function makeProgram(gl:WebGLRenderingContext){
+  const compile=(type:number,source:string)=>{const sh=gl.createShader(type)!;gl.shaderSource(sh,source);gl.compileShader(sh);if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(sh)||'shader compile failed');return sh}
+  const vs=compile(gl.VERTEX_SHADER,`attribute vec3 aPosition;uniform mat4 uProjection,uView,uModel;void main(){gl_Position=uProjection*uView*uModel*vec4(aPosition,1.0);}`)
+  const fs=compile(gl.FRAGMENT_SHADER,`precision mediump float;uniform vec3 uColor;uniform float uAlpha;void main(){gl_FragColor=vec4(uColor,uAlpha);}`)
+  const p=gl.createProgram()!;gl.attachShader(p,vs);gl.attachShader(p,fs);gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p)||'shader link failed');gl.deleteShader(vs);gl.deleteShader(fs);return p
+}
 
 export function CubeWorldScene({accent,accent2,primary}:Props){
   const host=useRef<HTMLDivElement>(null)
+  const drag=useRef({down:false,sx:0,sy:0,rx:0,ry:0})
   const [failed,setFailed]=useState(false)
-  const drag=useRef({x:0,y:0,down:false,sx:0,sy:0,rx:0,ry:0})
-  const onPointerDown=(e:ReactPointerEvent<HTMLDivElement>)=>{drag.current={...drag.current,down:true,sx:e.clientX,sy:e.clientY}}
-  const onPointerMove=(e:ReactPointerEvent<HTMLDivElement>)=>{if(!drag.current.down)return;drag.current.ry+=(e.clientX-drag.current.sx)*.004;drag.current.rx+=(e.clientY-drag.current.sy)*.003;drag.current.sx=e.clientX;drag.current.sy=e.clientY}
-  const onPointerUp=()=>{drag.current.down=false}
+
+  const pointerDown=(e:ReactPointerEvent<HTMLDivElement>)=>{drag.current.down=true;drag.current.sx=e.clientX;drag.current.sy=e.clientY;host.current?.setPointerCapture(e.pointerId)}
+  const pointerMove=(e:ReactPointerEvent<HTMLDivElement>)=>{if(!drag.current.down)return;drag.current.ry+=(e.clientX-drag.current.sx)*.004;drag.current.rx+=(e.clientY-drag.current.sy)*.003;drag.current.sx=e.clientX;drag.current.sy=e.clientY}
+  const pointerUp=(e:ReactPointerEvent<HTMLDivElement>)=>{drag.current.down=false;host.current?.releasePointerCapture(e.pointerId)}
 
   useEffect(()=>{
     const hostEl=host.current
-    if(!hostEl) return
-    let disposed=false
+    if(!hostEl)return
+    let stopped=false
     let raf=0
-    let resizeObs:ResizeObserver|undefined
+    let ro:ResizeObserver|undefined
     try{
       const canvas=document.createElement('canvas')
       canvas.setAttribute('aria-hidden','true')
       hostEl.prepend(canvas)
       const gl=canvas.getContext('webgl',{antialias:true,alpha:true,powerPreference:'high-performance'})
-      if(!gl) throw new Error('WebGL unavailable')
+      if(!gl)throw new Error('WebGL unavailable')
 
-      const vs=`
-        attribute vec3 aPosition;
-        uniform mat4 uProjection,uView,uModel;
-        void main(){gl_Position=uProjection*uView*uModel*vec4(aPosition,1.0);}
-      `
-      const fs=`
-        precision mediump float;
-        uniform vec3 uColor;
-        uniform float uAlpha;
-        void main(){gl_FragColor=vec4(uColor,uAlpha);}
-      `
-      const prog=program(gl,vs,fs)
-      gl.useProgram(prog)
-      const posLoc=gl.getAttribLocation(prog,'aPosition')
-      const projectionLoc=gl.getUniformLocation(prog,'uProjection')
-      const viewLoc=gl.getUniformLocation(prog,'uView')
-      const modelLoc=gl.getUniformLocation(prog,'uModel')
-      const colorLoc=gl.getUniformLocation(prog,'uColor')
-      const alphaLoc=gl.getUniformLocation(prog,'uAlpha')
+      const program=makeProgram(gl)
+      gl.useProgram(program)
+      const pos=gl.getAttribLocation(program,'aPosition')
+      const pLoc=gl.getUniformLocation(program,'uProjection')
+      const vLoc=gl.getUniformLocation(program,'uView')
+      const mLoc=gl.getUniformLocation(program,'uModel')
+      const cLoc=gl.getUniformLocation(program,'uColor')
+      const aLoc=gl.getUniformLocation(program,'uAlpha')
 
-      const cubeBuf=gl.createBuffer()!,cubeIndex=gl.createBuffer()!,floorBuf=gl.createBuffer()!,floorIndex=gl.createBuffer()!
-      gl.bindBuffer(gl.ARRAY_BUFFER,cubeBuf);gl.bufferData(gl.ARRAY_BUFFER,cubeVertices,gl.STATIC_DRAW)
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,cubeIndex);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,cubeIndices,gl.STATIC_DRAW)
-      gl.bindBuffer(gl.ARRAY_BUFFER,floorBuf);gl.bufferData(gl.ARRAY_BUFFER,floorVertices,gl.STATIC_DRAW)
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,floorIndex);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,floorIndices,gl.STATIC_DRAW)
+      const cubeBuf=gl.createBuffer()!,cubeIdx=gl.createBuffer()!,floorBuf=gl.createBuffer()!,floorIdx=gl.createBuffer()!,ringBuf=gl.createBuffer()!,particleBuf=gl.createBuffer()!
+      gl.bindBuffer(gl.ARRAY_BUFFER,cubeBuf);gl.bufferData(gl.ARRAY_BUFFER,cubeV,gl.STATIC_DRAW)
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,cubeIdx);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,cubeI,gl.STATIC_DRAW)
+      gl.bindBuffer(gl.ARRAY_BUFFER,floorBuf);gl.bufferData(gl.ARRAY_BUFFER,floorV,gl.STATIC_DRAW)
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,floorIdx);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,floorI,gl.STATIC_DRAW)
 
-      const rgbA=hexToRgb(accent),rgbB=hexToRgb(accent2),rgbP=hexToRgb(primary)
+      const ringSteps=96
+      const ringData=new Float32Array(ringSteps*3)
+      for(let i=0;i<ringSteps;i++){const a=i/ringSteps*Math.PI*2;ringData[i*3]=Math.cos(a)*2.7;ringData[i*3+1]=0;ringData[i*3+2]=Math.sin(a)*2.7}
+      gl.bindBuffer(gl.ARRAY_BUFFER,ringBuf);gl.bufferData(gl.ARRAY_BUFFER,ringData,gl.STATIC_DRAW)
+
+      const particleCount=window.innerWidth<600?28:54
+      const particleData=new Float32Array(particleCount*3)
+      for(let i=0;i<particleCount;i++){particleData[i*3]=(Math.random()-.5)*12;particleData[i*3+1]=Math.random()*5-1;particleData[i*3+2]=(Math.random()-.5)*6}
+      gl.bindBuffer(gl.ARRAY_BUFFER,particleBuf);gl.bufferData(gl.ARRAY_BUFFER,particleData,gl.STATIC_DRAW)
+
+      const ca=rgb(accent),cb=rgb(accent2),cp=rgb(primary)
       const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches
       const start=performance.now()
 
-      const drawMesh=(vertexBuffer:WebGLBuffer,indexBuffer:WebGLBuffer,count:number,model:number[],color:number[],alpha=1,mode=gl.TRIANGLES)=>{
-        gl.bindBuffer(gl.ARRAY_BUFFER,vertexBuffer)
-        gl.enableVertexAttribArray(posLoc)
-        gl.vertexAttribPointer(posLoc,3,gl.FLOAT,false,0,0)
+      const drawIndexed=(buffer:WebGLBuffer,indexBuffer:WebGLBuffer,count:number,model:number[],projection:number[],view:number[],color:number[],alpha:number)=>{
+        gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.enableVertexAttribArray(pos);gl.vertexAttribPointer(pos,3,gl.FLOAT,false,0,0)
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,indexBuffer)
-        gl.uniformMatrix4fv(projectionLoc,false,new Float32Array(projection))
-        gl.uniformMatrix4fv(viewLoc,false,new Float32Array(view))
-        gl.uniformMatrix4fv(modelLoc,false,new Float32Array(model))
-        gl.uniform3fv(colorLoc,new Float32Array(color))
-        gl.uniform1f(alphaLoc,alpha)
-        gl.drawElements(mode,count,gl.UNSIGNED_SHORT,0)
+        gl.uniformMatrix4fv(pLoc,false,new Float32Array(projection));gl.uniformMatrix4fv(vLoc,false,new Float32Array(view));gl.uniformMatrix4fv(mLoc,false,new Float32Array(model))
+        gl.uniform3fv(cLoc,new Float32Array(color));gl.uniform1f(aLoc,alpha);gl.drawElements(gl.TRIANGLES,count,gl.UNSIGNED_SHORT,0)
+      }
+
+      const drawLine=(buffer:WebGLBuffer,count:number,model:number[],projection:number[],view:number[],color:number[],alpha:number)=>{
+        gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.enableVertexAttribArray(pos);gl.vertexAttribPointer(pos,3,gl.FLOAT,false,0,0)
+        gl.uniformMatrix4fv(pLoc,false,new Float32Array(projection));gl.uniformMatrix4fv(vLoc,false,new Float32Array(view));gl.uniformMatrix4fv(mLoc,false,new Float32Array(model))
+        gl.uniform3fv(cLoc,new Float32Array(color));gl.uniform1f(aLoc,alpha);gl.drawArrays(gl.LINE_LOOP,0,count)
+      }
+
+      const drawParticles=(buffer:WebGLBuffer,count:number,projection:number[],view:number[])=>{
+        gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.enableVertexAttribArray(pos);gl.vertexAttribPointer(pos,3,gl.FLOAT,false,0,0)
+        gl.uniformMatrix4fv(pLoc,false,new Float32Array(projection));gl.uniformMatrix4fv(vLoc,false,new Float32Array(view));gl.uniformMatrix4fv(mLoc,false,new Float32Array(I))
+        gl.uniform3fv(cLoc,new Float32Array(cb));gl.uniform1f(aLoc,.35)
+        gl.drawArrays(gl.POINTS,0,count)
       }
 
       const render=(time:number)=>{
-        if(disposed) return
-        const t=(time-start)/1000
+        if(stopped)return
         const rect=hostEl.getBoundingClientRect()
         const dpr=Math.min(window.devicePixelRatio||1,1.25)
         const w=Math.max(1,Math.floor(rect.width*dpr)),h=Math.max(1,Math.floor(rect.height*dpr))
         if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;gl.viewport(0,0,w,h)}
-        gl.enable(gl.DEPTH_TEST)
-        gl.enable(gl.BLEND)
-        gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA)
         gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT)
+        gl.enable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA)
+        gl.enable(gl.CULL_FACE);gl.cullFace(gl.BACK)
 
-        const progress=Math.max(0,Math.min(1,(window.innerHeight*.75-rect.top)/(window.innerHeight+rect.height)))
-        const autoY=reduced?0:(t*.1+progress*.9)
-        const pointerY=reduced?0:drag.current.ry
-        const pointerX=reduced?0:drag.current.rx
-        const projection=perspective(.64,w/h,.1,40)
-        const eye:[number,number,number]=[Math.sin(autoY+pointerY)*8,3.2-Math.min(.7,progress*.7)+Math.sin(t*.32)*.08,Math.cos(autoY+pointerY)*8]
-        const target:[number,number,number]=[0,0,0]
-        const view=lookAt(eye,target,[0,1,0])
+        const elapsed=(time-start)/1000
+        const progress=Math.max(0,Math.min(1,(window.innerHeight*.74-rect.top)/(window.innerHeight+rect.height)))
+        const autoSpin=reduced?0:elapsed*.08+progress*.75
+        const view=look([Math.sin(autoSpin+drag.current.ry)*8,3.05-Math.min(.65,progress*.65),Math.cos(autoSpin+drag.current.ry)*8],[0,0,0],[0,1,0])
+        const projection=persp(.66,w/h,.1,45)
 
-        drawMesh(floorBuf,floorIndex,6,mat4Identity(),[...rgbB].map(v=>v*.42),.28)
+        drawIndexed(floorBuf,floorIdx,6,I,projection,view,[cb[0]*.45,cb[1]*.45,cb[2]*.45],.24)
 
-        const drawBox=(x:number,y:number,z:number,sx:number,sy:number,sz:number,ry:number,rx:number,color:number[],alpha=1)=>{
-          let m=translate(x,y,z)
-          m=mat4Multiply(m,rotY(ry));m=mat4Multiply(m,rotX(rx));m=mat4Multiply(m,scale(sx,sy,sz))
-          drawMesh(cubeBuf,cubeIndex,36,m,color,alpha)
+        const box=(x:number,y:number,z:number,sx:number,sy:number,sz:number,rot:number,tilt:number,color:number[],alpha=1)=>{
+          let model=t(x,y,z);model=mul(model,ry(rot));model=mul(model,rx(tilt));model=mul(model,s(sx,sy,sz));drawIndexed(cubeBuf,cubeIdx,36,model,projection,view,color,alpha)
         }
 
-        drawBox(-3.1,-.1,0,1.05,1.35,.82,0,0,rgbP,.92)
-        drawBox(-1.3,-.45,-.55,.82,.88,.72,.18,0,rgbB,.72)
-        drawBox(1.45,-.22,-.35,1.05,1.12,.82,-.14,0,rgbP,.8)
-        drawBox(3.05,-.48,.1,.78,.76,.68,.28,0,rgbB,.62)
+        box(-3.15,-.2,0,1.05,1.35,.82,0,0,cp,.88)
+        box(-1.35,-.45,-.55,.82,.88,.7,.2,0,cb,.64)
+        box(1.5,-.24,-.35,1.04,1.12,.82,-.12,0,cp,.74)
+        box(3.0,-.5,.15,.76,.76,.66,.25,0,cb,.58)
 
-        const float= reduced?0:Math.sin(t*1.1)*.18
-        drawBox(0,float,.55,1.05,1.05,1.05,.35,Math.sin(t*.55)*.12,rgbA,1)
-        drawBox(-3.25,1.25+float*.7,1.25,.75,.09,1.02,-.35,.18,rgbA,.86)
-        drawBox(3.15,1.35+Math.sin(t*1.35)*.16,.72,.62,.12,.62,Math.sin(t*.6),.2,rgbB,.9)
-        drawBox(2.55,.1,-1.55,.55,1.0,.55,Math.sin(t*.8),0,rgbP,.74)
+        const float=reduced?0:Math.sin(elapsed*1.15)*.16
+        box(0,float,.6,1.08,1.08,1.08,.38,Math.sin(elapsed*.55)*.11,ca,1)
+        box(-3.35,1.22+float,1.2,.78,.09,1.05,-.34,.18,ca,.92)
+        box(3.12,1.35+Math.sin(elapsed*1.35)*.16,.7,.6,.12,.6,elapsed*.45,.2,cb,.92)
+        box(2.55,.05,-1.52,.52,1.0,.52,elapsed*.55,0,cp,.7)
 
-        const ringColor=rgbB
-        gl.bindBuffer(gl.ARRAY_BUFFER,cubeBuf)
-        const ringSteps=64
-        const ringData=new Float32Array(ringSteps*3)
-        for(let i=0;i<ringSteps;i++){const a=i/ringSteps*Math.PI*2;ringData[i*3]=Math.cos(a)*2.65;ringData[i*3+1]=-.05;ringData[i*3+2]=Math.sin(a)*2.65}
-        gl.bufferData(gl.ARRAY_BUFFER,ringData,gl.DYNAMIC_DRAW)
-        gl.enableVertexAttribArray(posLoc);gl.vertexAttribPointer(posLoc,3,gl.FLOAT,false,0,0)
-        gl.uniformMatrix4fv(projectionLoc,false,new Float32Array(projection))
-        gl.uniformMatrix4fv(viewLoc,false,new Float32Array(view))
-        let rm=mat4Multiply(rotY(t*.18),rotX(.5))
-        gl.uniformMatrix4fv(modelLoc,false,new Float32Array(rm))
-        gl.uniform3fv(colorLoc,new Float32Array(ringColor))
-        gl.uniform1f(alphaLoc,.66)
-        gl.drawArrays(gl.LINE_LOOP,0,ringSteps)
+        drawLine(ringBuf,ringSteps,mul(t(0,.25,0),mul(ry(elapsed*.15),rx(.42))),projection,view,cb,.62)
+        drawParticles(particleBuf,particleCount,projection,view)
 
-        gl.deleteBuffer(null as unknown as WebGLBuffer)
+        if(!reduced){
+          drag.current.ry*=.94
+          drag.current.rx*=.94
+        }
+
         raf=requestAnimationFrame(render)
       }
 
-      const onResize=()=>{const rect=hostEl.getBoundingClientRect();if(rect.width&&rect.height){canvas.style.width='100%';canvas.style.height='100%'}}
-      resizeObs=new ResizeObserver(onResize);resizeObs.observe(hostEl)
-      onResize()
+      const resize=()=>{canvas.style.width='100%';canvas.style.height='100%'}
+      ro=new ResizeObserver(resize);ro.observe(hostEl);resize()
       raf=requestAnimationFrame(render)
 
       return()=>{}
-    }catch(error){console.error('Native WebGL scene failed',error);setFailed(true)}
-    return()=>{disposed=true;cancelAnimationFrame(raf);resizeObs?.disconnect()}
+    }catch(error){console.error('CUBE native WebGL scene failed',error);if(!stopped)setFailed(true)}
+    return()=>{stopped=true;cancelAnimationFrame(raf);ro?.disconnect()}
   },[accent,accent2,primary])
 
-  return <div ref={host} className="cube-world-scene" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
+  return <div ref={host} className="cube-world-scene" onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp}>
     {failed&&<div className="cube-world-fallback"><span>Campus in motion</span><strong>Resources · Requests · Events · Cred</strong></div>}
     <div className="cube-world-label cube-world-label-a"><span>01</span>RESOURCES</div>
     <div className="cube-world-label cube-world-label-b"><span>02</span>REQUESTS</div>
