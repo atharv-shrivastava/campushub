@@ -1,8 +1,7 @@
-FROM eclipse-temurin:21-jdk AS build
+FROM maven:3.9.12-eclipse-temurin-21 AS build
 WORKDIR /app
 COPY . .
-RUN chmod +x mvnw 2>/dev/null || true
-RUN ./mvnw -q -DskipTests package 2>/dev/null || mvn -q -DskipTests package
+RUN mvn -q -DskipTests package
 
 FROM eclipse-temurin:21-jre
 WORKDIR /app
