@@ -19,6 +19,8 @@ type Theme = {
 type Tab = 'home' | 'resources' | 'requests' | 'cred' | 'profile'
 type RequestState = 'OPEN' | 'ACCEPTED' | 'DELIVERED' | 'COMPLETED' | 'AUTO_RELEASED' | 'DISPUTED' | 'CANCELLED'
 type Modal = 'upload' | 'request' | 'lost' | null
+type Role = 'STUDENT' | 'CLUB' | 'ADMIN'
+type Session = { id: string; name: string; role: Role; clubName?: string }
 
 const themes: Theme[] = [
   { id: 'emerald', name: 'Emerald & Champagne', label: 'Editorial', bg: '#F7F3E9', surface: '#FFFDF7', primary: '#0C4D42', secondary: '#D9E7DF', accent: '#E9D39B', accent2: '#D49A78', ink: '#173B35' },
@@ -102,6 +104,50 @@ async function sha256(file: File) {
 }
 
 export function CubeExperience() {
+  const [session, setSession] = useState<Session | null>(null)
+  const [pdfUploads, setPdfUploads] = useState(0)
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem('cube-session')
+      if (raw) setSession(JSON.parse(raw) as Session)
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    if (!session) return
+    void cubeApi.user(session.id).wallet().then((wallet) => setPdfUploads(wallet.validPdfUploads)).catch(() => {})
+  }, [session])
+
+  const login = async (next: Session) => {
+    try {
+      const wallet = await cubeApi.user(next.id).role(next.role)
+      setPdfUploads(wallet.validPdfUploads)
+    } catch {}
+    setSession(next)
+    window.localStorage.setItem('cube-session', JSON.stringify(next))
+  }
+
+  const logout = () => {
+    setSession(null)
+    setPdfUploads(0)
+    window.localStorage.removeItem('cube-session')
+  }
+
+  if (!session) return <CubeLogin onLogin={login} />
+  if (session.role === 'STUDENT' && pdfUploads < 2) {
+    return <PdfUnlockScreen session={session} count={pdfUploads} onCountChange={setPdfUploads} onLogout={logout} />
+  }
+
+  return <CubeExperienceCore session={session} pdfUploads={pdfUploads} onPdfUploaded={() => setPdfUploads((value) => value + 1)} onLogout={logout} />
+}
+
+function CubeExperienceCore({ session, pdfUploads, onPdfUploaded, onLogout }: {
+  session: Session
+  pdfUploads: number
+  onPdfUploaded: () => void
+  onLogout: () => void
+}) {
   const [themeId, setThemeId] = useLocalState('cube-theme', 'emerald')
   const [tab, setTab] = useState<Tab>('home')
   const [query, setQuery] = useState('')
