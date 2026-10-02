@@ -62,6 +62,7 @@ export const cubeApi = {
       cancel:(id:number)=>request<ApiRequest>(userId,`/api/v1/requests/${id}/cancel`,{method:'POST'}),
     },
     clubs: {
+      me:()=>request<ApiClub|null>(userId,'/api/v1/clubs/me'),
       register:(name:string)=>request<ApiClub>(userId,'/api/v1/clubs',{method:'POST',body:JSON.stringify({name})}),
       submitEvent:(body:{title:string;kind:string;venue:string;startsAt:string})=>request<ApiEvent>(userId,'/api/v1/events',{method:'POST',body:JSON.stringify(body)}),
     },
@@ -69,6 +70,8 @@ export const cubeApi = {
   }),
   admin: (adminId:string) => ({
     wallet:()=>request<ApiWallet>(adminId,'/api/v1/wallet',undefined,adminId),
+    requests:()=>request<ApiRequest[]>(adminId,'/api/v1/requests',undefined,adminId),
+    resolveRequest:(id:number,outcome:'COMPLETED'|'REFUNDED'|'FORFEITED')=>request<ApiRequest>(adminId,`/api/v1/requests/${id}/resolve?outcome=${outcome}`,{method:'POST'},adminId),
     pendingClubs:()=>request<ApiClub[]>(adminId,'/api/v1/clubs/pending',undefined,adminId),
     pendingEvents:()=>request<ApiEvent[]>(adminId,'/api/v1/events/pending',undefined,adminId),
     moderateClub:(id:number,approve:boolean)=>request<ApiClub>(adminId,`/api/v1/clubs/${id}/moderate?approve=${approve}`,{method:'POST'},adminId),
