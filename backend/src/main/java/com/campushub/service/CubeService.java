@@ -9,6 +9,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
+import java.security.MessageDigest;
+import java.io.IOException;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class CubeService {
@@ -54,6 +57,34 @@ public class CubeService {
     }
 
     @Transactional
+    public Resource createResourceFromPdf(String userId, String title, String subject, String tag,
+                                          String teacher, String setName, MultipartFile file) {
+        try {
+            if (file == null || file.isEmpty()) throw new IllegalArgumentException("PDF file is required.");
+            if (file.getSize() > 10 * 1024 * 1024) throw new IllegalArgumentException("PDF must be 10 MB or smaller.");
+            String contentType = file.getContentType();
+            if (contentType == null || !contentType.equalsIgnoreCase("application/pdf")) {
+                throw new IllegalArgumentException("Only PDF files are accepted.");
+            }
+            byte[] bytes = file.getBytes();
+            if (bytes.length < 5 || bytes[0] != '%' || bytes[1] != 'P' || bytes[2] != 'D' || bytes[3] != 'F' || bytes[4] != '-') {
+                throw new IllegalArgumentException("The uploaded file is not a valid PDF.");
+            }
+            String hash = hex(MessageDigest.getInstance("SHA-256").digest(bytes));
+            return createResource(userId, title, subject, tag, teacher, setName, hash,
+                    file.getOriginalFilename() == null ? "resource.pdf" : file.getOriginalFilename());
+        } catch (java.security.NoSuchAlgorithmException | IOException e) {
+            throw new IllegalStateException("Could not inspect the uploaded PDF.", e);
+        }
+    }
+
+    private String hex(byte[] bytes) {
+        StringBuilder out = new StringBuilder();
+        for (byte value : bytes) out.append(String.format("%02x", value));
+        return out.toString();
+    }
+
+    @Transactional
     public Resource createResource(String userId, String title, String subject, String tag,
                                    String teacher, String setName, String fileHash, String fileName) {
         ensureUser(userId);
@@ -79,6 +110,9 @@ public class CubeService {
     @Transactional
     public CampusRequest createRequest(String userId, String title, String detail, long bounty) {
         User user = ensureUser(userId);
+        if (user.getRole() == User.Role.STUDENT && user.getValidPdfUploads() < 2) {
+            throw new IllegalStateException("Upload two valid, unique PDFs before creating campus requests.");
+        }
         if (bounty <= 0) throw new IllegalArgumentException("Bounty must be greater than zero.");
         if (user.getSpendableCred() < bounty) throw new IllegalStateException("Not enough Spendable Cred.");
         user.addSpendable(-bounty);
