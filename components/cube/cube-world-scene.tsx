@@ -38,7 +38,10 @@ export function CubeWorldScene({accent,accent2,primary,onChapterChange}:Props){
   const host=useRef<HTMLDivElement>(null)
   const drag=useRef({down:false,sx:0,sy:0,rx:0,ry:0})
   const chapterRef=useRef<Chapter>('resources')
+  const activateRef=useRef(onObjectActivate)
   const [failed,setFailed]=useState(false)
+
+  useEffect(()=>{activateRef.current=onObjectActivate},[onObjectActivate])
 
   const pointerDown=(e:ReactPointerEvent<HTMLDivElement>)=>{drag.current.down=true;drag.current.sx=e.clientX;drag.current.sy=e.clientY;host.current?.setPointerCapture(e.pointerId)}
   const pointerMove=(e:ReactPointerEvent<HTMLDivElement>)=>{if(!drag.current.down)return;drag.current.ry+=(e.clientX-drag.current.sx)*.004;drag.current.rx+=(e.clientY-drag.current.sy)*.003;drag.current.sx=e.clientX;drag.current.sy=e.clientY}
@@ -184,7 +187,7 @@ export function CubeWorldScene({accent,accent2,primary,onChapterChange}:Props){
       return()=>{}
     }catch(error){console.error('CUBE native WebGL scene failed',error);if(!stopped)setFailed(true)}
     return()=>{stopped=true;cancelAnimationFrame(raf);ro?.disconnect()}
-  },[accent,accent2,primary,onChapterChange,onObjectActivate])
+  },[accent,accent2,primary,onChapterChange])
 
   return <div ref={host} className="cube-world-scene" onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp}>
     {failed&&<div className="cube-world-fallback"><span>Campus in motion</span><strong>Resources · Requests · Events · Cred</strong></div>}
