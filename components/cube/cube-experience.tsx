@@ -544,6 +544,13 @@ function SpatialCampus({onJump,theme}:{onJump:(tab:Tab)=>void;theme:Theme}) {
     }
     onJump(chapter as Tab)
   }
+  const chooseChapter=(next:'resources'|'requests'|'events'|'cred')=>{
+    if(next==='events'){
+      document.getElementById('cube-events-section')?.scrollIntoView({behavior:'smooth',block:'start'})
+      return
+    }
+    onJump(next as Tab)
+  }
   return <section className="cube-world-wrap">
     <div className="cube-world-copy">
       <span className="cube-kicker">CUBE / SPATIAL CAMPUS</span>
@@ -560,7 +567,7 @@ function SpatialCampus({onJump,theme}:{onJump:(tab:Tab)=>void;theme:Theme}) {
         <button onClick={openChapter}>{details.button}<ArrowUpRight size={14}/></button>
       </div>
       <div className="cube-world-chapters" aria-label="Spatial campus chapters">
-        {(['resources','requests','events','cred'] as const).map((item)=><button key={item} className={item===chapter?'is-active':''} onClick={()=>setChapter(item)} aria-label={item}>{item.slice(0,1).toUpperCase()}</button>)}
+        {(['resources','requests','events','cred'] as const).map((item)=><button key={item} className={item===chapter?'is-active':''} onClick={()=>chooseChapter(item)} aria-label={item}>{item.slice(0,1).toUpperCase()}</button>)}
       </div>
       <div className="cube-world-swipe"><span>Scroll to change · drag to orbit</span><i/></div>
     </div>
