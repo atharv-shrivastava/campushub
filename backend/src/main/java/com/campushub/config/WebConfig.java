@@ -9,17 +9,22 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig implements WebMvcConfigurer {
     private final String frontendOrigin;
 
-    public WebConfig(@Value("${cube.frontend-origin}") String frontendOrigin) {
+    public WebConfig(@Value("${cube.frontend-origin:*}") String frontendOrigin) {
         this.frontendOrigin = frontendOrigin;
     }
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/api/**")
-                .allowedOrigins(frontendOrigin)
+        var mapping = registry.addMapping("/api/**")
                 .allowedMethods("GET", "POST", "PATCH", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(false)
                 .maxAge(3600);
+
+        if ("*".equals(frontendOrigin)) {
+            mapping.allowedOrigins("*");
+        } else {
+            mapping.allowedOrigins(frontendOrigin);
+        }
     }
 }
