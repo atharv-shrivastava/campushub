@@ -12,6 +12,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { CubeScene } from './cube-scene'
 import { cubeApi } from '@/lib/cube-api'
 import { AdminView, ClubView, CubeLogin, PdfUnlockScreen } from './cube-roles'
+import { CubeWorldScene } from './cube-world-scene'
 
 type Theme = {
   id: string; name: string; label: string; bg: string; surface: string; primary: string;
@@ -527,6 +528,16 @@ function HomeView(props: any) {
   const { loading, theme, spendable, monthly, query, setQuery, resources, saved, liked, toggleSaved, toggleLiked, downloadResource, onOpenFeature, onSeeResources, onJump, events, registerEvent, lostItems, resolveLostItem, setModal, offers, setNotice } = props
   return <div className="cube-page">
     <section className="cube-hero"><div className="cube-hero-copy"><motion.span className="cube-live-pill" animate={{y:[0,-2,0]}} transition={{duration:3,repeat:Infinity,ease:'easeInOut'}}><span className="cube-live-dot"/> Friday · Week 7</motion.span><h1>Your campus,<br/><em>beautifully alive.</em></h1><p>Resources, people, requests, events and little campus moments, all in one place.</p><div className="cube-search-wrap"><Search size={19}/><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Search notes, requests, events..." aria-label="Search CampusHub"/><kbd>⌘ K</kbd></div><div className="cube-quick-row"><button onClick={()=>onJump('resources')}><BookOpen size={16}/> Study</button><button onClick={()=>onJump('requests')}><Zap size={16}/> Help someone</button><button onClick={()=>onJump('cred')}><Gift size={16}/> Spend Cred</button></div></div><motion.div className="cube-hero-orb" initial={{opacity:0,scale:.9,rotate:-4}} animate={{opacity:1,scale:1,rotate:0}} transition={{duration:.8}}><CubeScene accent={theme.primary} accent2={theme.accent2} intensity={1.05}/><div className="cube-hero-orb-caption"><span>03</span><small>things worth opening</small></div></motion.div></section>
+
+    <section className="cube-world-wrap">
+      <div className="cube-world-copy">
+        <span className="cube-kicker">CUBE / SPATIAL CAMPUS</span>
+        <h2>Not another flat dashboard.</h2>
+        <p>Scroll through a tiny living campus. Resources, requests and events become objects you can see, touch and explore.</p>
+        <div className="cube-world-legend"><span><i className="resource-dot"/>Resources</span><span><i className="request-dot"/>Requests</span><span><i className="event-dot"/>Events</span><span><i className="cred-dot"/>Cred</span></div>
+      </div>
+      <div className="cube-world-stage"><CubeWorldScene accent={theme.accent} accent2={theme.accent2} primary={theme.primary}/><div className="cube-world-swipe"><span>Drag / swipe</span><i/></div></div>
+    </section>
 
     <section className="cube-feature-rail">{[['Academic resources',BookOpen,'lavender','Notes, assignments & PYQs'],['Campus requests',Send,'mint','Tasks powered by Cred'],['Events & clubs',Compass,'peach','What is happening next'],['Lost & found',PackageSearch,'yellow','Find what wandered off'],['Local offers',Store,'blue','Student-friendly deals']].map(([title,Icon,tone,desc],index)=>{const I=Icon as typeof BookOpen;return <motion.button key={String(title)} className={`cube-feature-card cube-3d-card-interactive tone-${tone}`} style={{transformStyle:'preserve-3d'}} whileTap={{scale:.965,rotateX:1,z:-4}} whileHover={{y:-5,rotateX:-2,rotateY:index%2?2:-2,z:9}} onClick={()=>onOpenFeature(String(title))}><span className="cube-feature-number">0{index+1}</span><span className="cube-feature-icon"><I size={20}/></span><strong>{String(title)}</strong><small>{String(desc)}</small><span className="cube-feature-arrow"><ArrowUpRight size={16}/></span></motion.button>})}</section>
 
