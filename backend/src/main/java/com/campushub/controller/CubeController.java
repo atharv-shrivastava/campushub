@@ -32,12 +32,25 @@ public class CubeController {
         return service.listResources(q).stream().map(ResourceResponse::from).toList();
     }
 
-    @PostMapping("/resources")
+    @PostMapping(value = "/resources", consumes = "application/json")
     public ResponseEntity<ResourceResponse> createResource(
             @RequestHeader(value = "X-User-Id", defaultValue = "demo-atharv") String userId,
             @Valid @RequestBody CreateResourceRequest body) {
         Resource saved = service.createResource(userId, body.title, body.subject, body.tag,
                 body.teacher, body.setName, body.fileHash, body.fileName);
+        return ResponseEntity.ok(ResourceResponse.from(saved));
+    }
+
+    @PostMapping(value = "/resources/upload", consumes = "multipart/form-data")
+    public ResponseEntity<ResourceResponse> uploadResourcePdf(
+            @RequestHeader(value = "X-User-Id", defaultValue = "demo-atharv") String userId,
+            @RequestPart("file") org.springframework.web.multipart.MultipartFile file,
+            @RequestParam String title,
+            @RequestParam String subject,
+            @RequestParam(defaultValue = "Notes") String tag,
+            @RequestParam(required = false) String teacher,
+            @RequestParam(defaultValue = "A") String setName) {
+        Resource saved = service.createResourceFromPdf(userId, title, subject, tag, teacher, setName, file);
         return ResponseEntity.ok(ResourceResponse.from(saved));
     }
 
