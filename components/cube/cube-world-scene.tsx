@@ -141,6 +141,14 @@ export function CubeWorldScene({accent,accent2,primary,onChapterChange,onObjectA
         gl.drawArrays(gl.POINTS,0,count)
       }
 
+      const box=(x:number,y:number,z:number,sx:number,sy:number,sz:number,rot:number,tilt:number,color:number[],alpha=1)=>{
+        let model=t(x,y,z)
+        model=mul(model,ry(rot))
+        model=mul(model,rx(tilt))
+        model=mul(model,s(sx,sy,sz))
+        drawIndexed(cubeBuf,cubeIdx,36,model,projection,view,color,alpha)
+      }
+
       const render=(time:number)=>{
         if(stopped)return
         const rect=hostEl.getBoundingClientRect()
