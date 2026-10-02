@@ -179,37 +179,57 @@ export function CubeWorldScene({accent,accent2,primary,onChapterChange,onObjectA
           return {x:rect.left+(x/z*.5+.5)*rect.width,y:rect.top+(-y/z*.5+.5)*rect.height}
         }
 
+        const fade=(active:number,base=.9)=>Math.min(1,base+active*.2)
+        const sceneAlpha=(i:number)=>Math.max(.08,Math.min(1,1-Math.abs(progress-[.125,.375,.625,.875][i])/.30))
+
         drawIndexed(floorBuf,floorIdx,6,I,projection,view,[cb[0]*.45,cb[1]*.45,cb[2]*.45],.24)
 
-        const box=(x:number,y:number,z:number,sx:number,sy:number,sz:number,rot:number,tilt:number,color:number[],alpha=1)=>{
-          let model=t(x,y,z);model=mul(model,ry(rot));model=mul(model,rx(tilt));model=mul(model,s(sx,sy,sz));drawIndexed(cubeBuf,cubeIdx,36,model,projection,view,color,alpha)
+        const bookScene=sceneAlpha(0)
+        const requestScene=sceneAlpha(1)
+        const eventScene=sceneAlpha(2)
+        const credScene=sceneAlpha(3)
+
+        // Resources: a study stack that opens outward as the chapter becomes active.
+        for(let i=0;i<5;i++){
+          const spread=(i-2)*.48
+          box(spread*.75,-.35+Math.abs(i-2)*.08,.35+(2-Math.abs(i-2))*.12,
+            .72,.11,.98,.18+spread*.025,0,ca,fade(bookScene,.42)*(.35+.1*bookScene))
         }
+        box(0,.03,.72,1.85,.08,1.14,.02,.02,cp,.25+.58*bookScene)
 
-        const float=reduced?0:Math.sin(elapsed*1.15)*.16
-        const focusBox=(chapter:Chapter,baseX:number,baseY:number,baseZ:number,baseS:[number,number,number],rot:number,tilt:number,color:number[],active:number,alpha:number)=>{
-          const z=baseZ+active*1.15
-          const x=baseX*(1-active*.72)
-          const y=baseY+active*.35
-          const scale=1+active*.42
-          box(x,y,z,baseS[0]*scale,baseS[1]*scale,baseS[2]*scale,rot,tilt,color,Math.min(1,alpha+.2*active))
-          const screen=project([x,y,z])
-          if(screen)hitTargets.current.push({chapter,x:screen.x,y:screen.y,radius:Math.max(34,Math.min(74,baseS[0]*scale*34))})
+        // Requests: a package moving along a visible handoff path.
+        const courierT=(Math.sin(elapsed*.7)+1)*.5
+        const courierX=-2.2+courierT*4.4
+        for(let i=0;i<5;i++){
+          const px=-2.6+i*1.3
+          box(px,-.72,-.15,.28,.045,.12,0,0,cb,.16+.18*requestScene)
         }
-        hitTargets.current=[]
-        focusBox('resources',-3.15,-.2,0,[1.05,1.35,.82],0,0,cp,fResources,.72)
-        focusBox('requests',3.0,-.5,.15,[.76,.76,.66],.25,0,cb,fRequests,.62)
-        focusBox('events',1.5,-.24,-.35,[1.04,1.12,.82],-.12,0,cp,fEvents,.64)
-        focusBox('cred',2.55,.05,-1.52,[.52,1.0,.52],elapsed*.55,0,ca,fCred,.52)
+        box(courierX,-.22,.15,.68,.62,.68,elapsed*.35,.08,cp,.34+.62*requestScene)
+        box(courierX,-.22,.15,.73,.13,.16,elapsed*.35,.08,ca,.22+.56*requestScene)
+        drawLine(ringBuf,ringSteps,mul(t(courierX,.42,.15),mul(ry(elapsed*.2),rx(.65))),projection,view,cb,.18+.50*requestScene)
 
-        const centerPulse=Math.max(fResources,fRequests,fEvents,fCred)
-        box(0,float,.6+centerPulse*.2,1.08+centerPulse*.16,1.08+centerPulse*.16,1.08+centerPulse*.16,.38,Math.sin(elapsed*.55)*.11,ca,1)
-        box(-3.35,1.22+float,1.2,.78,.09,1.05,-.34,.18,ca,.92)
-        box(3.12,1.35+Math.sin(elapsed*1.35)*.16,.7,.6,.12,.6,elapsed*.45,.2,cb,.92)
+        // Events: a small stage with a beacon that pulses into the scene.
+        box(0,-.78,.35,1.65,.22,1.1,0,0,cp,.22+.58*eventScene)
+        box(0,.05,.35,.46,.82,.46,0,0,ca,.32+.62*eventScene)
+        const beaconScale=1+Math.sin(elapsed*2.2)*.12*eventScene
+        box(0,1.02,.35,.62*beaconScale,.12,.62*beaconScale,elapsed*.35,0,ca,.30+.65*eventScene)
+        drawLine(ringBuf,ringSteps,mul(t(0,.42,.35),mul(ry(-elapsed*.3),rx(.78))),projection,view,cb,.20+.62*eventScene)
 
-        drawLine(ringBuf,ringSteps,mul(t(0,.25,0),mul(ry(elapsed*.15),rx(.42))),projection,view,cb,.62)
+        // Cred: stacked spendable coins and a vault-like center.
+        for(let i=0;i<4;i++){
+          box(2.15,-.55+i*.16,-.72,.72,.055,.72,elapsed*.12,0,ca,.20+.17*credScene)
+        }
+        box(2.15,.12,-.72,.92,.62,.92,elapsed*.08,0,cp,.24+.62*credScene)
+        box(2.15,.64,-.72,.48,.08,.48,elapsed*.22,0,ca,.26+.68*credScene)
+
+        // The CUBE stays as the universal home marker, breathing faster for the active scene.
+        const centerPulse=Math.max(bookScene,requestScene,eventScene,credScene)
+        const universalScale=1.0+centerPulse*.16+Math.sin(elapsed*1.15)*.03
+        box(0,.15,.55,1.0*universalScale,1.0*universalScale,1.0*universalScale,.38,Math.sin(elapsed*.55)*.11,ca,.78+.22*centerPulse)
+
         drawParticles(particleBuf,particleCount,projection,view)
 
-        raf=requestAnimationFrame(render)
+        raf=requestAnimationFrame(render)        raf=requestAnimationFrame(render)
       }
 
       const resize=()=>{canvas.style.width='100%';canvas.style.height='100%'}
@@ -223,8 +243,8 @@ export function CubeWorldScene({accent,accent2,primary,onChapterChange,onObjectA
 
   return <div ref={host} className="cube-world-scene" onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp}>
     {failed&&<div className="cube-world-fallback"><span>Campus in motion</span><strong>Resources · Requests · Events · Cred</strong></div>}
-    <div className="cube-world-label cube-world-label-a"><span>01</span>RESOURCES</div>
-    <div className="cube-world-label cube-world-label-b"><span>02</span>REQUESTS</div>
-    <div className="cube-world-label cube-world-label-c"><span>03</span>EVENTS</div>
+    <div className="cube-world-label cube-world-label-a"><span>01</span>STUDY WORLD</div>
+    <div className="cube-world-label cube-world-label-b"><span>02</span>HELP WORLD</div>
+    <div className="cube-world-label cube-world-label-c"><span>03</span>EVENT WORLD</div>
   </div>
 }
