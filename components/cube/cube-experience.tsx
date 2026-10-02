@@ -11,6 +11,7 @@ import {
 import { AnimatePresence, motion } from 'motion/react'
 import { CubeScene } from './cube-scene'
 import { cubeApi } from '@/lib/cube-api'
+import { AdminView, ClubView, CubeLogin, PdfUnlockScreen } from './cube-roles'
 
 type Theme = {
   id: string; name: string; label: string; bg: string; surface: string; primary: string;
