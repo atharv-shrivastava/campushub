@@ -1,33 +1,69 @@
-# campushub
+# CampusHub
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [v0](https://v0.app).
+A student-focused academic resource hub and campus Lost & Found web application prototype.
 
-## Built with v0
+CampusHub brings notes, assignments, practical files, previous-year questions, lab manuals and syllabus material into a searchable, subject-organized library, with bookmarking, upload workflows and a Lost & Found experience.
 
-This repository is linked to a [v0](https://v0.app) project. You can continue developing by visiting the link below -- start new chats to make changes, and v0 will push commits directly to this repo. Every merge to `main` will automatically deploy.
+## Documentation
 
-[Continue working on v0 →](https://v0.app/chat/projects/prj_7vnnV3oi7mTL9YeqpTsWZOQphi4n)
+See the complete project documentation, including:
 
-## Getting Started
+- product overview and feature workflows
+- current frontend implementation
+- tech stack and project structure
+- resource/search/upload/saved workflows
+- Lost & Found workflow and matching
+- planned authentication and authorization
+- planned Node.js + Express backend
+- PostgreSQL + Prisma data model
+- REST API specification
+- file storage and PDF processing
+- voting and 10-downvote moderation workflow
+- notifications, security, pagination and deployment guidance
 
-First, run the development server:
+[Read DOCUMENTATION.md](./DOCUMENTATION.md)
+
+## Current status
+
+The repository currently contains the polished Next.js frontend prototype with local/mock data. The full-stack backend described in the documentation is the target architecture and is not yet implemented in this repository.
+
+## Run locally
+
+This is a Next.js project.
+
+Install dependencies:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
+```
+
+Run development:
+
+```bash
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Build:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm build
+```
 
-## Learn More
+Start production:
 
-To learn more, take a look at the following resources:
+```bash
+pnpm start
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [v0 Documentation](https://v0.app/docs) - learn about v0 and how to use it.
+The development server runs at http://localhost:3000.
+
+## Stack
+
+- Next.js 16
+- React 19
+- TypeScript
+- Tailwind CSS
+- Motion
+- Lucide React
+
+The planned production stack adds Node.js + Express, PostgreSQL, Prisma, authentication, persistent storage and REST APIs.
