@@ -478,7 +478,7 @@ function App() {
               <footer className="page-footer"><span>© 2026 CampusHub</span><span>Made for campus life <Heart size={12} /></span><button onClick={() => showToast("Help and feedback will be available here.")}>Help & feedback</button></footer>
             </>
           ) : (
-            {(() => {
+            (() => {
               const ModulePage = modulePages[activeNav];
               return ModulePage ? <ModulePage /> : (
                 <section className="module-placeholder">
@@ -489,7 +489,7 @@ function App() {
                   <button className="create-button" onClick={() => selectNav("Home")}>Back to Home <ArrowUpRight size={15} /></button>
                 </section>
               );
-            })()}
+            })()
           )}
         </main>
       </div>
