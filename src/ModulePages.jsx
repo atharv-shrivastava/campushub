@@ -158,6 +158,7 @@ export function CommunitiesPage() {
   const [channel, setChannel] = useState("general");
   const [joined, setJoined] = useState([1, 2, 6]);
   const selected = communityData.find((item) => item.id === selectedId) || communityData[0];
+  const SelectedCommunityIcon = selected.icon;
   const visible = useMemo(() => communityData.filter((item) => {
     const matches = (item.name + " " + item.description).toLowerCase().includes(search.toLowerCase());
     return matches && (tab !== "My communities" || joined.includes(item.id));
@@ -192,7 +193,7 @@ export function CommunitiesPage() {
         </section>
         <section className="community-board">
           <div className="community-board-header">
-            <div className={"community-large-icon tint-" + selected.tint}><selected.icon size={22} /></div>
+            <div className={"community-large-icon tint-" + selected.tint}><SelectedCommunityIcon size={22} /></div>
             <div><span className="eyebrow">COMMUNITY BOARD</span><h2>{selected.name}</h2><p>{selected.members.toLocaleString()} members · {selected.description}</p></div>
             <button className="board-more"><Bookmark size={16} /></button>
           </div>
