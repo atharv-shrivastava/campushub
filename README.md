@@ -18,18 +18,18 @@ The content is sample UI data. Authentication, backend APIs, persistence, paymen
 
 ## Run locally
 
-Requirements: Node.js 20.19+ or 22.12+.
+Requirements: Node.js 20.19+ or 22.12+, and pnpm.
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 Create a production build:
 
 ```bash
-npm run build
-npm run preview
+pnpm build
+pnpm preview
 ```
 
 ## Design direction
