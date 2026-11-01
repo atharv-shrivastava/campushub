@@ -1,5 +1,15 @@
 import { useMemo, useState } from "react";
 import {
+  CommunitiesPage,
+  MarketplacePage,
+  TicketExchangePage,
+  ClubsPage,
+  EventsPage,
+  ResourcesPage,
+  BusinessHubPage,
+  KarmaPage,
+} from "./ModulePages.jsx";
+import {
   ArrowUpRight,
   Bell,
   BookOpen,
@@ -51,6 +61,17 @@ const navigation = [
   { label: "Business Hub", icon: Building2 },
   { label: "Karma & Rewards", icon: Trophy },
 ];
+
+const modulePages = {
+  Communities: CommunitiesPage,
+  Marketplace: MarketplacePage,
+  "Ticket Exchange": TicketExchangePage,
+  Clubs: ClubsPage,
+  Events: EventsPage,
+  Resources: ResourcesPage,
+  "Business Hub": BusinessHubPage,
+  "Karma & Rewards": KarmaPage,
+};
 
 const communities = [
   { name: "Programming", members: "1.2k", icon: Code2, color: "violet" },
@@ -457,13 +478,18 @@ function App() {
               <footer className="page-footer"><span>© 2026 CampusHub</span><span>Made for campus life <Heart size={12} /></span><button onClick={() => showToast("Help and feedback will be available here.")}>Help & feedback</button></footer>
             </>
           ) : (
-            <section className="module-placeholder">
-              <div className="module-placeholder-icon"><ActiveIcon size={27} /></div>
-              <span className="eyebrow">CAMPUSHUB WORKSPACE</span>
-              <h1>{activeNav}</h1>
-              <p>This section is part of the CampusHub experience. The homepage and visual system are being established first; this workspace will connect to its own features next.</p>
-              <button className="create-button" onClick={() => selectNav("Home")}>Back to Home <ArrowUpRight size={15} /></button>
-            </section>
+            (() => {
+              const ModulePage = modulePages[activeNav];
+              return ModulePage ? <ModulePage /> : (
+                <section className="module-placeholder">
+                  <div className="module-placeholder-icon"><ActiveIcon size={27} /></div>
+                  <span className="eyebrow">CAMPUSHUB WORKSPACE</span>
+                  <h1>{activeNav}</h1>
+                  <p>This workspace will be connected as the next part of the CampusHub build.</p>
+                  <button className="create-button" onClick={() => selectNav("Home")}>Back to Home <ArrowUpRight size={15} /></button>
+                </section>
+              );
+            })()
           )}
         </main>
       </div>
