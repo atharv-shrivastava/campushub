@@ -230,6 +230,8 @@ const ticketListings = [
   { title: "College Fest — Pro Pass", event: "Campus Culture Night", date: "18 Nov 2026", type: "Event ticket", price: "₹350", seller: "Mihir P.", initials: "MP", tone: "event-orange", note: "Transfer permitted by organiser" },
   { title: "Tech Summit Entry", event: "Central India Tech Summit", date: "14 Nov 2026", type: "Event ticket", price: "₹200", seller: "Ira S.", initials: "IS", tone: "event-blue", note: "Digital ticket transfer" },
   { title: "Stand-up Night — General", event: "Laugh Track Live", date: "21 Nov 2026", type: "Event ticket", price: "₹499", seller: "Dev A.", initials: "DA", tone: "event-violet", note: "Check organiser's transfer policy" },
+  { title: "Bhopal → Delhi · Train journey", event: "Travel ticket · 09 November", date: "09 Nov 2026", type: "Travel ticket", price: "Listed by student", seller: "Naman R.", initials: "NR", tone: "event-blue", note: "Authorised name transfer process only" },
+  { title: "Bhopal → Indore · Bus seat", event: "Travel ticket · 11 November", date: "11 Nov 2026", type: "Travel ticket", price: "Listed by student", seller: "Pihu G.", initials: "PG", tone: "event-green", note: "Subject to operator transfer policy" },
 ];
 
 export function TicketExchangePage() {
@@ -240,10 +242,10 @@ export function TicketExchangePage() {
     <div className="module-page">
       <PageIntro eyebrow="PASS IT ON" title="Ticket Exchange" description="Discover event tickets listed by other students in your college." action="List a ticket" onAction={() => alert("Ticket listing form will be connected here.")} />
       <div className="ticket-note"><Ticket size={20} /><div><strong>Student-listed tickets</strong><span>Listings are provided by students. Check the event organiser's transfer rules and details directly with the seller.</span></div><ShieldCheck size={17} /></div>
-      <div className="module-toolbar"><div className="module-tabs">{["All tickets", "Event ticket"].map((item) => <button key={item} className={tab === item ? "module-tab active" : "module-tab"} onClick={() => setTab(item)}>{item}</button>)}</div><SearchBox value={search} onChange={setSearch} placeholder="Search event tickets..." /></div>
+      <div className="module-toolbar"><div className="module-tabs">{["All tickets", "Event ticket", "Travel ticket"].map((item) => <button key={item} className={tab === item ? "module-tab active" : "module-tab"} onClick={() => setTab(item)}>{item === "Event ticket" ? "Event tickets" : item === "Travel ticket" ? "Travel tickets" : item}</button>)}</div><SearchBox value={search} onChange={setSearch} placeholder="Search event tickets..." /></div>
       <div className="listing-toolbar-row"><span>{visible.length} student listings</span><span className="sort-note"><ArrowDownUp size={13} /> Recently listed</span></div>
       <div className="ticket-list">{visible.map((item) => <article className="ticket-list-card" key={item.title}><div className={"ticket-art " + item.tone}><Ticket size={31} /><span>ADMIT<br />ONE</span></div><div className="ticket-info"><span className="listing-category">{item.type}</span><h3>{item.title}</h3><strong>{item.event}</strong><small><CalendarDays size={12} />{item.date}</small><small><Check size={12} />{item.note}</small></div><div className="ticket-list-side"><strong>{item.price}</strong><span className="ticket-seller">Listed by {item.seller}</span><button className="small-primary" onClick={() => alert("Seller contact will be connected here.")}>Contact seller <ArrowUpRight size={14} /></button></div></article>)}</div>
-      <p className="module-disclaimer">CampusHub provides the listing and discovery space only. It does not verify ticket validity, process payments or guarantee transfers.</p>
+      <p className="module-disclaimer">CampusHub provides listing and discovery only. It does not verify ticket validity, process payments or guarantee transfers. Travel tickets must be transferred through the issuer's or railway's authorised process where applicable.</p>
     </div>
   );
 }
